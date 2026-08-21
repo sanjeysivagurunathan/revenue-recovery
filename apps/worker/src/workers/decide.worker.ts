@@ -57,11 +57,14 @@ Confidence: ${diagnosisPayload?.confidence}
 Urgency: ${diagnosisPayload?.recommended_urgency}
 Reasoning: ${diagnosisPayload?.reasoning}
 
-Constraints (Strictly enforce these):
+Constraints (Strictly enforce these — no exceptions):
 - Allowed Actions: ${allowedActions.join(", ")}
 - Allowed Channels: ${allowedChannels.join(", ")}
 - You cannot choose an action or channel outside of the allowed lists above.
 - If attempts used >= max attempts, you MUST choose "escalate_human" and "HUMAN_HANDOFF".
+- If the diagnosis reasoning mentions "permanently blocked", "blocked by the issuing bank", "card blocked", or "frozen", you MUST NOT choose "retry_payment". Retrying a blocked card always fails. Instead choose "send_reminder" via "WHATSAPP" if phone is available, else "EMAIL".
+- If root_cause is "insufficient_funds" and attempts < max attempts, prefer "retry_payment" first.
+- For all other cases on first contact, prefer "send_reminder" via "WHATSAPP" if phone is available, else "EMAIL".
 
 Analyze the diagnosis and constraints, and decide on the next best action and channel.
 `;
