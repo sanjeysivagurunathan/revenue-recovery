@@ -1,0 +1,16 @@
+{
+  "name": "@revenue-recovery/types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared TypeScript types used by both the web app and the worker",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "require": "./src/index.ts"
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "@types/node": "^24.0.0"
+  }
+}

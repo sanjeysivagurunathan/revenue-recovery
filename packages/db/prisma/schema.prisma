@@ -1,0 +1,226 @@
+// schema.prisma
+// Revenue Recovery Agent — Prisma Data Model
+//
+// Every table here maps directly to the audit-first design in IMPLEMENTATION.md §4.
+// Key design invariants:
+//   1. AuditEntry is written in the SAME transaction as every state transition.
+//   2. amountAtRisk / amountRecovered use Decimal (never Float) to avoid rounding.
+//   3. All foreign keys are soft references via String IDs, indexed for query speed.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The four revenue leak types this agent handles (§1).
+enum LeakType {
+  PAYMENT_DEGRADATION   // payment.failed, card declines, UPI errors
+  CHECKOUT_ABANDONMENT  // order created but no payment captured
+  SUBSCRIPTION_FAILURE  // subscription.charged failure, halted subscriptions
+  RECEIVABLE_OVERDUE    // B2B invoice/payment link past due date
+}
+
+/// Explicit state machine for a RevenueCase (§5).
+/// Transitions are validated in code, never jumped arbitrarily.
+enum CaseStatus {
+  DETECTED            // webhook/event received, case row created
+  DIAGNOSING          // Claude call #1 in flight
+  DIAGNOSED           // root cause classified, action selection pending
+  INTERVENING         // action executor running
+  AWAITING_CUSTOMER   // waiting for customer to pay / reply
+  RECOVERED           // full amount captured
+  PARTIALLY_RECOVERED // partial payment captured, case closed
+  FAILED              // all attempts exhausted, no recovery
+  ESCALATED           // sent to human review queue
+  STOPPED             // halted by compliance rules (opt-out, dispute, SLA)
+}
+
+/// Outbound channels the agent may use, constrained by RecoveryPolicy.
+enum InterventionChannel {
+  EMAIL          // Resend
+  SMS            // Twilio
+  WHATSAPP       // Twilio WhatsApp sandbox
+  VOICE          // Twilio Voice (stretch)
+  PAYMENT_RETRY  // Razorpay Subscriptions / Orders API retry
+  PAYMENT_LINK   // Razorpay Payment Links API
+  HUMAN_HANDOFF  // dashboard queue item, no outbound contact
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A customer whose revenue is at risk.
+/// externalId is the Razorpay customer ID (or a CRM/ERP ID for receivables).
+model Customer {
+  id         String   @id @default(cuid())
+  externalId String   @unique // e.g. "cust_XXXXXXXXXXXXXXXXXX"
+  name       String
+  email      String
+  phone      String?
+  timezone   String   @default("Asia/Kolkata") // for quiet-hours enforcement
+
+  /// Rolling risk score 0-1; higher = more likely to churn or default.
+  /// Updated by the DIAGNOSE step after each case outcome.
+  riskScore  Float    @default(0)
+
+  cases     RevenueCase[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([externalId])
+}
+
+/// The central entity — one case per revenue leak event.
+/// Drives the DETECT→DIAGNOSE→DECIDE→ACT→VERIFY state machine (§5).
+model RevenueCase {
+  id         String     @id @default(cuid())
+  customerId String
+  customer   Customer   @relation(fields: [customerId], references: [id])
+
+  leakType   LeakType
+  status     CaseStatus @default(DETECTED)
+
+  /// Monetary fields use Decimal to avoid floating-point rounding errors on ₹ amounts.
+  amountAtRisk    Decimal @db.Decimal(12, 2) // original at-risk amount in INR
+  currency        String  @default("INR")
+  amountRecovered Decimal @default(0) @db.Decimal(12, 2) // grows as payments come in
+
+  /// Razorpay order/payment/subscription ID, or AR invoice number.
+  /// Used for idempotency checks and webhook correlation.
+  sourceRef String
+
+  /// Set by DIAGNOSE step (Claude call #1).
+  rootCause       String? // e.g. "insufficient_funds", "card_expired"
+  diagnosisPayload Json?   // full structured Claude output, stored verbatim
+
+  /// Which policy governs this case's intervention limits.
+  policyId String?
+  policy   RecoveryPolicy? @relation(fields: [policyId], references: [id])
+
+  /// Attempt tracking — enforced by the guardrail layer (§6).
+  attemptsUsed Int @default(0)
+  maxAttempts  Int @default(3)
+
+  /// Stopping-rule deadline — agent auto-stops if not resolved by this time.
+  slaDeadline DateTime?
+
+  /// Human-approval gate flag — set when amountAtRisk > HIGH_VALUE_APPROVAL_THRESHOLD.
+  requiresApproval  Boolean   @default(false)
+  approvedAt        DateTime?
+  approvedBy        String?   // ops user email
+
+  detectedAt  DateTime  @default(now())
+  resolvedAt  DateTime? // set on RECOVERED / PARTIALLY_RECOVERED / FAILED / STOPPED
+
+  events        CaseEvent[]
+  interventions Intervention[]
+  auditEntries  AuditEntry[]
+
+  @@index([status])
+  @@index([leakType])
+  @@index([customerId])
+  @@index([sourceRef])
+  @@index([detectedAt])
+}
+
+/// Raw events that feed into a case — webhooks, polling results, customer replies.
+/// Stored as immutable append-only records; never modified after insert.
+model CaseEvent {
+  id     String      @id @default(cuid())
+  caseId String
+  case   RevenueCase @relation(fields: [caseId], references: [id])
+
+  /// Namespaced event type, e.g. "webhook.payment.failed", "customer.replied.sms".
+  type    String
+  payload Json   // raw normalized payload (PII scrubbed where required)
+
+  occurredAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([type])
+}
+
+/// A single outbound action taken on a case.
+model Intervention {
+  id     String      @id @default(cuid())
+  caseId String
+  case   RevenueCase @relation(fields: [caseId], references: [id])
+
+  channel      InterventionChannel
+  action       String  // e.g. "send_reminder", "retry_payment", "offer_promise_to_pay"
+  templateUsed String? // slug of the message template used (never free-form LLM copy)
+
+  sentAt    DateTime  @default(now())
+  outcome   String?   // "delivered" | "customer_paid" | "no_response" | "bounced" | "failed"
+  outcomeAt DateTime?
+
+  /// Cost in fractional "units" for ROI calculation (§8).
+  /// Email ≈ 0.001, SMS ≈ 0.05, Voice ≈ 0.25 (configurable).
+  costUnits Decimal? @db.Decimal(8, 4)
+
+  @@index([caseId])
+}
+
+/// Policy that governs intervention limits for a given leak type.
+/// Policies are configured once and referenced by many cases.
+model RecoveryPolicy {
+  id   String @id @default(cuid())
+  name String // e.g. "B2B Receivables — Standard"
+
+  leakType        LeakType
+  maxAttempts     Int @default(3)
+  cooldownHours   Int @default(24) // minimum hours between contacts on the same case
+  escalateAfter   Int @default(3)  // escalate to human after this many failed attempts
+
+  /// Only channels in this list may be used for cases under this policy.
+  allowedChannels InterventionChannel[]
+
+  /// Quiet hours: no SMS/WhatsApp/voice outside these local hours (§6 rule 3).
+  quietHoursStart Int? // 0-23, e.g. 9  (9 AM)
+  quietHoursEnd   Int? // 0-23, e.g. 21 (9 PM)
+
+  cases RevenueCase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Immutable audit log — every state transition and LLM decision is recorded here.
+/// Written synchronously in the same DB transaction as the state change (§7).
+model AuditEntry {
+  id     String      @id @default(cuid())
+  caseId String
+  case   RevenueCase @relation(fields: [caseId], references: [id])
+
+  /// Who/what triggered this entry.
+  /// Values: "agent", "policy_engine", "guardrail", "human:<email>"
+  actor String
+
+  /// What happened.
+  /// Values: "state_transition", "decision", "stop_triggered", "approval_required", "approved"
+  action String
+
+  fromStatus CaseStatus?
+  toStatus   CaseStatus?
+
+  /// Claude's verbatim reasoning from the structured output (stored as-is for audit).
+  reasoning String?
+
+  /// Additional structured context (e.g. full Claude response, policy check result).
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([createdAt])
+}

@@ -1,0 +1,133 @@
+/*
+ * apps/web/src/app/globals.css
+ *
+ * Design system tokens — all values are CSS custom properties so every
+ * component can reference them without importing JS theme objects.
+ *
+ * Colour palette: slate-based dark mode with indigo/violet accent.
+ * Typography: Inter variable font (loaded in layout.tsx).
+ */
+
+@import "tailwindcss";
+
+/* ── Font variable ─────────────────────────────────────────────────────────── */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ── Design tokens (dark mode first — this is an ops dashboard) ────────────── */
+:root {
+  /* Background layers */
+  --background: 222 47% 5%;          /* near-black slate */
+  --surface: 222 39% 9%;             /* card surface */
+  --surface-raised: 222 35% 13%;    /* elevated element */
+  --border: 222 30% 18%;
+
+  /* Text */
+  --foreground: 210 40% 98%;
+  --muted-foreground: 215 20% 65%;
+
+  /* Accent — indigo/violet for CTA and highlights */
+  --accent: 239 84% 67%;            /* indigo-500 equivalent */
+  --accent-hover: 239 84% 60%;
+  --accent-foreground: 0 0% 100%;
+
+  /* Status colours */
+  --success: 142 76% 45%;
+  --warning: 45 93% 58%;
+  --danger: 0 84% 60%;
+  --info: 199 89% 56%;
+
+  /* Recovered ₹ green */
+  --recovered: 160 84% 39%;
+
+  /* Radius */
+  --radius: 0.75rem;
+
+  /* Sidebar */
+  --sidebar-width: 240px;
+}
+
+/* ── Base reset ────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* ── Scrollbar styling ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* ── Utility classes ───────────────────────────────────────────────────────── */
+.bg-background    { background-color: hsl(var(--background)); }
+.bg-surface       { background-color: hsl(var(--surface)); }
+.bg-surface-raised { background-color: hsl(var(--surface-raised)); }
+
+.text-foreground       { color: hsl(var(--foreground)); }
+.text-muted-foreground { color: hsl(var(--muted-foreground)); }
+.text-accent           { color: hsl(var(--accent)); }
+.text-success          { color: hsl(var(--success)); }
+.text-warning          { color: hsl(var(--warning)); }
+.text-danger           { color: hsl(var(--danger)); }
+.text-recovered        { color: hsl(var(--recovered)); }
+
+.border-default { border-color: hsl(var(--border)); }
+
+/* ── Glassmorphism card ────────────────────────────────────────────────────── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+}
+
+/* ── Status badge colours ──────────────────────────────────────────────────── */
+.status-detected          { color: hsl(var(--info));    background: hsl(var(--info) / 0.15); }
+.status-diagnosing        { color: hsl(var(--warning)); background: hsl(var(--warning) / 0.15); }
+.status-diagnosed         { color: hsl(var(--warning)); background: hsl(var(--warning) / 0.15); }
+.status-intervening       { color: hsl(var(--accent));  background: hsl(var(--accent) / 0.15); }
+.status-awaiting-customer { color: hsl(var(--accent));  background: hsl(var(--accent) / 0.15); }
+.status-recovered         { color: hsl(var(--recovered)); background: hsl(var(--recovered) / 0.15); }
+.status-partially-recovered { color: hsl(var(--success)); background: hsl(var(--success) / 0.15); }
+.status-failed            { color: hsl(var(--danger));  background: hsl(var(--danger) / 0.15); }
+.status-escalated         { color: hsl(var(--warning)); background: hsl(var(--warning) / 0.15); }
+.status-stopped           { color: hsl(var(--muted-foreground)); background: hsl(var(--border)); }
+
+/* ── Animations ────────────────────────────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.85); }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(16px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-pulse-dot  { animation: pulse-dot 2s ease-in-out infinite; }
+.animate-slide-in   { animation: slide-in-right 0.25s ease-out; }
+.animate-fade-in    { animation: fade-in 0.3s ease-out; }

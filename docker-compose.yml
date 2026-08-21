@@ -1,0 +1,63 @@
+# docker-compose.yml
+# Local development infrastructure:
+#   - PostgreSQL 16  →  all relational data (cases, events, interventions, audit log)
+#   - Redis 7        →  BullMQ job queues + distributed locks
+
+version: "3.9"
+
+services:
+  # ─────────────────────────────────────────────────────────────────
+  # PostgreSQL 16 — primary datastore
+  # ─────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: revenue_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: revenue
+      POSTGRES_PASSWORD: revenue_dev_secret
+      POSTGRES_DB: revenue_recovery
+    ports:
+      - "5432:5432"
+    volumes:
+      # persist data across restarts
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U revenue -d revenue_recovery"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────
+  # Redis 7 — BullMQ job queues & caching
+  # ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: revenue_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass redis_dev_secret
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_dev_secret", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────
+  # Redis Insight (optional GUI for debugging queues in dev)
+  # ─────────────────────────────────────────────────────────────────
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: revenue_redis_insight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+  redis_data:
