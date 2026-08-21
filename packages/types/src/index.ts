@@ -265,3 +265,47 @@ export interface RazorpaySubscriptionEntity {
   source: string;
   payment_method: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LLM PAYLOADS — Expected structured JSON from Claude
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type DiagnosisRootCause =
+  | "insufficient_funds"
+  | "card_expired"
+  | "bank_decline_soft"
+  | "upi_mandate_failed"
+  | "cart_price_shock"
+  | "shipping_cost_surprise"
+  | "payment_method_missing"
+  | "genuine_dispute"
+  | "unknown";
+
+export interface DiagnosisOutput {
+  root_cause: DiagnosisRootCause;
+  confidence: number;
+  recommended_urgency: "low" | "medium" | "high";
+  reasoning: string;
+}
+
+export type DecisionAction =
+  | "retry_payment"
+  | "send_payment_link"
+  | "send_reminder"
+  | "offer_promise_to_pay"
+  | "escalate_human"
+  | "stop";
+
+export type DecisionChannel =
+  | "EMAIL"
+  | "SMS"
+  | "WHATSAPP"
+  | "VOICE"
+  | "PAYMENT_RETRY"
+  | "HUMAN_HANDOFF";
+
+export interface DecisionOutput {
+  action: DecisionAction;
+  channel: DecisionChannel;
+  reasoning: string;
+}
