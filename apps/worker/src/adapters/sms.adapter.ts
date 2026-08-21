@@ -68,12 +68,23 @@ export async function sendSms(payload: SmsPayload): Promise<void> {
   const contentSid = process.env["TWILIO_WHATSAPP_CONTENT_SID"];
 
   try {
-    const createParams: any = { from, to, body: message };
+    const createParams: any = { from, to };
+
+    if (payload.channel === "WHATSAPP" && contentSid) {
+      // Twilio Trial account requires pre-approved ContentSid template
+      // We dynamically inject the amount and paymentLink into the template variables
+      createParams.contentSid = contentSid;
+      createParams.contentVariables = JSON.stringify({
+        "1": `${payload.currency} ${payload.amountAtRisk}`,
+        "2": payload.paymentLink || "https://dashboard.razorpay.com",
+      });
+    } else {
+      createParams.body = message;
+    }
+
     await client.messages.create(createParams);
     logger.info({ to: payload.to, channel: payload.channel, caseId: payload.caseId }, "[SmsAdapter] WhatsApp message sent via Twilio");
   } catch (err: any) {
-    // Twilio error 21654: ContentSid required (sandbox window expired or template needed)
-    // Gracefully fall back to email so the customer still gets the recovery link
     logger.warn(
       { err: err.message, code: err.code, caseId: payload.caseId },
       "[SmsAdapter] ⚠️ WhatsApp send failed — falling back to email"
