@@ -36,7 +36,7 @@ export function Header() {
       {/* ── System status indicator ── */}
       <div className="flex items-center gap-2">
         <div className="flex items-center justify-center w-4 h-4">
-          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-foreground animate-pulse-dot" />
+          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-success animate-pulse-dot" />
         </div>
         <span className="text-[11px] text-muted-foreground">Agent active</span>
       </div>

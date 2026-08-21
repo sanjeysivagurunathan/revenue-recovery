@@ -34,16 +34,16 @@
   --foreground-muted: 0 0% 62%;
   --foreground-dim: 0 0% 43%;
 
-  /* Keep the status API, but deliberately render every state in monochrome. */
+  /* Keep colour reserved for outcomes that need immediate operator attention. */
   --brand: 0 0% 96%;
   --brand-hover: 0 0% 100%;
   --brand-muted: 0 0% 16%;
-  --success: 0 0% 88%;
-  --success-muted: 0 0% 15%;
+  --success: 146 58% 53%;
+  --success-muted: 146 42% 12%;
   --warning: 0 0% 74%;
   --warning-muted: 0 0% 13%;
-  --danger: 0 0% 60%;
-  --danger-muted: 0 0% 11%;
+  --danger: 0 72% 62%;
+  --danger-muted: 0 48% 12%;
   --info: 0 0% 72%;
   --info-muted: 0 0% 14%;
 

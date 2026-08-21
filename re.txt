@@ -3,3 +3,8 @@ Start PostgreSQL & Redis :docker-compose up -d
 Push the Database Schema & Generate Prisma Client:npm run db:push
 Seed the Demo Data:npx tsx seed/synthetic-cases.ts
 Start the Development Server:npm run dev
+Start the Tunnel (in new terminal): ngrok http 3000
+ngrok Dashboard: https://dashboard.ngrok.com/get-started/your-authtoken
+Current ngrok URL: https://agreeable-level-puppy.ngrok-free.dev
+Razorpay Webhook URL: https://agreeable-level-puppy.ngrok-free.dev/api/webhooks/razorpay
+Razorpay Webhook Secret: Sanjey@45

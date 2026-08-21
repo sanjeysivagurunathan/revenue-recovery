@@ -14,14 +14,25 @@ dotenv.config();
 
 async function simulateWebhook() {
   const webhookSecret = process.env["RAZORPAY_WEBHOOK_SECRET"] || "Sanjey@45";
-  const paymentId = `pay_${Math.random().toString(36).substring(2, 12)}`;
-
   const args = process.argv.slice(2);
+  const paymentIndex = args.indexOf("--paymentId");
+  const paymentId = paymentIndex !== -1 ? args[paymentIndex + 1] : `pay_${Math.random().toString(36).substring(2, 12)}`;
+
   const emailIndex = args.indexOf("--email");
   const phoneIndex = args.indexOf("--phone");
 
   const targetEmail = emailIndex !== -1 ? args[emailIndex + 1] : process.env["TEST_EMAIL"] || "sanjudote45@gmail.com";
   const targetPhone = phoneIndex !== -1 ? args[phoneIndex + 1] : process.env["TEST_PHONE"] || "+919790317406";
+
+  const errorIndex = args.indexOf("--error");
+  const attemptsIndex = args.indexOf("--attempts");
+  
+  // --error card_blocked → AI will skip retry and go straight to email/whatsapp
+  // --attempts N        → pretend N retries already happened (AI will escalate faster)
+  const errorCode = errorIndex !== -1 ? args[errorIndex + 1] : "BAD_REQUEST_PAYMENT_DECLINED_INSUFFICIENT_FUNDS";
+  const errorDesc = errorCode === "card_blocked"
+    ? "Payment was declined because the card has been permanently blocked by the issuing bank."
+    : "Payment was declined by the bank due to insufficient funds in customer account.";
 
   const payload = {
     entity: "event",
@@ -52,8 +63,8 @@ async function simulateWebhook() {
           notes: {
             customer_name: "Sanjey",
           },
-          error_code: "BAD_REQUEST_PAYMENT_DECLINED_INSUFFICIENT_FUNDS",
-          error_description: "Payment was declined by the bank due to insufficient funds in customer account.",
+          error_code: errorCode,
+          error_description: errorDesc,
           error_source: "bank",
           error_step: "payment_authorization",
           error_reason: "payment_failed",
