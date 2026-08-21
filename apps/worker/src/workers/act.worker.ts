@@ -109,12 +109,23 @@ export function registerActWorker(): Worker {
         // ── send_reminder: Templated email or SMS depending on channel ──────
         case "send_reminder": {
           const channel = intervention.channel;
+          const shortUrl = await createPaymentLink({
+            caseId,
+            amountPaise: Math.round(Number(revenueCase.amountAtRisk) * 100),
+            currency: revenueCase.currency,
+            customerName: revenueCase.customer.name,
+            customerEmail: revenueCase.customer.email,
+            customerPhone: revenueCase.customer.phone,
+            description: `Payment reminder (case ${caseId})`,
+          });
+
           if (channel === "EMAIL") {
             await sendRecoveryEmail({
               to: revenueCase.customer.email,
               customerName: revenueCase.customer.name,
               amountAtRisk: revenueCase.amountAtRisk.toString(),
               currency: revenueCase.currency,
+              paymentLink: shortUrl,
               caseId,
             });
           } else if (channel === "SMS" || channel === "WHATSAPP") {
@@ -125,6 +136,7 @@ export function registerActWorker(): Worker {
                 customerName: revenueCase.customer.name,
                 amountAtRisk: revenueCase.amountAtRisk.toString(),
                 currency: revenueCase.currency,
+                paymentLink: shortUrl,
                 caseId,
               });
             } else {
@@ -133,26 +145,38 @@ export function registerActWorker(): Worker {
                 customerName: revenueCase.customer.name,
                 amountAtRisk: revenueCase.amountAtRisk.toString(),
                 currency: revenueCase.currency,
+                paymentLink: shortUrl,
                 caseId,
                 channel: channel as "SMS" | "WHATSAPP",
               });
             }
           }
-          metadata = { channel_used: channel };
+          metadata = { channel_used: channel, payment_link_url: shortUrl };
           shouldIncrementAttempts = true;
           break;
         }
 
         // ── offer_promise_to_pay: Email + schedule a follow-up verify ────────
         case "offer_promise_to_pay": {
+          const shortUrl = await createPaymentLink({
+            caseId,
+            amountPaise: Math.round(Number(revenueCase.amountAtRisk) * 100),
+            currency: revenueCase.currency,
+            customerName: revenueCase.customer.name,
+            customerEmail: revenueCase.customer.email,
+            customerPhone: revenueCase.customer.phone,
+            description: `Promise to pay link (case ${caseId})`,
+          });
+
           await sendRecoveryEmail({
             to: revenueCase.customer.email,
             customerName: revenueCase.customer.name,
             amountAtRisk: revenueCase.amountAtRisk.toString(),
             currency: revenueCase.currency,
+            paymentLink: shortUrl,
             caseId,
           });
-          metadata = { follow_up_scheduled: true };
+          metadata = { follow_up_scheduled: true, payment_link_url: shortUrl };
           shouldIncrementAttempts = true;
           break;
         }
