@@ -12,7 +12,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { detectQueue } from "@/lib/queues";
+import { getDetectQueue } from "@/lib/queues";
 import { type RazorpayWebhookPayload, LeakType } from "@revenue-recovery/types";
 
 /** Verify the Razorpay webhook signature (HMAC-SHA256) */
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
 
   // Push to BullMQ detect queue for the worker to normalize
   if (leakType && sourceRef) {
-    await detectQueue.add("webhook", {
+    await getDetectQueue().add("webhook", {
       sourceRef,
       leakType,
       rawPayload: payload,

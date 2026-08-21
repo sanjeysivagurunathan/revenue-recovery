@@ -132,9 +132,15 @@ export interface DetectJobData {
   receivedAt: string;       // ISO 8601
 }
 
-/** Payload for "case:diagnose", "case:decide", "case:act", "case:verify". */
+/** Payload for "case:diagnose", "case:decide", "case:verify". */
 export interface CaseJobData {
   caseId: string;
+}
+
+/** Payload for "case:act" — includes both the case and the specific intervention to execute. */
+export interface ActJobData {
+  caseId: string;
+  interventionId: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

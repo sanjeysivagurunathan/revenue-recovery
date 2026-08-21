@@ -8,11 +8,6 @@
 import { Redis, type RedisOptions } from "ioredis";
 
 function buildRedisOptions(): RedisOptions {
-  const url = process.env["REDIS_URL"];
-  if (!url) {
-    throw new Error("REDIS_URL environment variable is not set");
-  }
-
   return {
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
@@ -22,14 +17,24 @@ function buildRedisOptions(): RedisOptions {
   };
 }
 
-const REDIS_URL = process.env["REDIS_URL"] ?? "redis://localhost:6379";
-
-const globalForRedis = globalThis as unknown as {
-  redis: Redis | undefined;
+const REDIS_URL = () => {
+  const url = process.env["REDIS_URL"];
+  if (!url) throw new Error("REDIS_URL environment variable is not set");
+  return url;
 };
 
-export const redis = globalForRedis.redis ?? new Redis(REDIS_URL, buildRedisOptions());
+const globalForRedis = globalThis as unknown as { redis: Redis | undefined };
 
-if (process.env["NODE_ENV"] !== "production") {
-  globalForRedis.redis = redis;
+export function getRedis(): Redis {
+  if (!globalForRedis.redis) {
+    globalForRedis.redis = new Redis(REDIS_URL(), buildRedisOptions());
+  }
+  return globalForRedis.redis;
 }
+
+/** @deprecated use getRedis() — kept for backward compat in tests */
+export const redis = new Proxy({} as Redis, {
+  get(_t, prop) {
+    return (getRedis() as any)[prop as string];
+  },
+});

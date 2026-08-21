@@ -48,4 +48,5 @@ export {
   LeakType,
   CaseStatus,
   InterventionChannel,
+  InterventionStatus,
 } from "../generated/client/index.js";

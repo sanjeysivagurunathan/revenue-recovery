@@ -55,6 +55,13 @@ enum InterventionChannel {
   HUMAN_HANDOFF  // dashboard queue item, no outbound contact
 }
 
+enum InterventionStatus {
+  PENDING
+  EXECUTED
+  FAILED
+  SKIPPED
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MODELS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -157,12 +164,15 @@ model Intervention {
   case   RevenueCase @relation(fields: [caseId], references: [id])
 
   channel      InterventionChannel
-  action       String  // e.g. "send_reminder", "retry_payment", "offer_promise_to_pay"
-  templateUsed String? // slug of the message template used (never free-form LLM copy)
+  action       String               // e.g. "send_reminder", "retry_payment"
+  status       InterventionStatus   @default(PENDING)
+  templateUsed String?              // slug of the message template used (never free-form LLM copy)
 
-  sentAt    DateTime  @default(now())
-  outcome   String?   // "delivered" | "customer_paid" | "no_response" | "bounced" | "failed"
-  outcomeAt DateTime?
+  sentAt     DateTime  @default(now())
+  executedAt DateTime?             // when the executor actually fired
+  outcome    String?               // "delivered" | "customer_paid" | "no_response" | "bounced" | "failed"
+  outcomeAt  DateTime?
+  metadata   Json?                 // adapter-specific result (order_id, payment_link_url, etc.)
 
   /// Cost in fractional "units" for ROI calculation (§8).
   /// Email ≈ 0.001, SMS ≈ 0.05, Voice ≈ 0.25 (configurable).

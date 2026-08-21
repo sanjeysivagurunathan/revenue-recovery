@@ -2,13 +2,19 @@
  * apps/web/src/lib/queues.ts
  *
  * BullMQ queue instances used by the web app to enqueue jobs for the worker.
+ * Uses a lazy getter so the Redis client is only created on first request —
+ * this prevents build-time errors when REDIS_URL is not set during `next build`.
  */
 
 import { Queue } from "bullmq";
-import { redis } from "./redis";
+import { getRedis } from "./redis";
 
-/** 
- * Queue for the DETECT stage.
- * The Next.js API route pushes Razorpay webhooks here for the worker to process.
- */
-export const detectQueue = new Queue("case:detect", { connection: redis });
+/** Lazily-created Queue singleton to prevent build-time Redis connection */
+let _detectQueue: Queue | null = null;
+
+export function getDetectQueue(): Queue {
+  if (!_detectQueue) {
+    _detectQueue = new Queue("case:detect", { connection: getRedis() });
+  }
+  return _detectQueue;
+}
