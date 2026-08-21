@@ -66,8 +66,26 @@ export async function sendSms(payload: SmsPayload): Promise<void> {
   const to = payload.channel === "WHATSAPP" ? `whatsapp:${payload.to}` : payload.to;
   const contentSid = process.env["TWILIO_WHATSAPP_CONTENT_SID"];
 
-  const createParams: any = { from, to, body: message };
-
-  await client.messages.create(createParams);
-  logger.info({ to: payload.to, channel: payload.channel, caseId: payload.caseId }, "[SmsAdapter] Message sent via Twilio");
+  try {
+    const createParams: any = { from, to, body: message };
+    await client.messages.create(createParams);
+    logger.info({ to: payload.to, channel: payload.channel, caseId: payload.caseId }, "[SmsAdapter] WhatsApp message sent via Twilio");
+  } catch (err: any) {
+    // Twilio error 21654: ContentSid required (sandbox window expired or template needed)
+    // Gracefully fall back to email so the customer still gets the recovery link
+    logger.warn(
+      { err: err.message, code: err.code, caseId: payload.caseId },
+      "[SmsAdapter] ⚠️ WhatsApp send failed — falling back to email"
+    );
+    const { sendRecoveryEmail } = await import("./email.adapter.js");
+    await sendRecoveryEmail({
+      to: payload.to,
+      customerName: payload.customerName,
+      amountAtRisk: payload.amountAtRisk,
+      currency: payload.currency,
+      paymentLink: payload.paymentLink,
+      caseId: payload.caseId,
+    });
+    logger.info({ caseId: payload.caseId }, "[SmsAdapter] ✅ Email fallback sent successfully");
+  }
 }
