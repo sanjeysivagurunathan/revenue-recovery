@@ -24,7 +24,7 @@ import {
   RefreshCw,
   Eye,
 } from "lucide-react";
-import { CaseStatus, LeakType } from "@revenue-recovery/db";
+import { CaseStatus, LeakType } from "@revenue-recovery/types";
 
 export default function CasesPage() {
   const [cases, setCases] = useState<any[]>([]);

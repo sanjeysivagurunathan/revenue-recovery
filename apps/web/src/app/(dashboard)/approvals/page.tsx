@@ -16,7 +16,7 @@ import {
   TrendingUp,
   RefreshCw,
 } from "lucide-react";
-import type { CaseStatus } from "@revenue-recovery/db";
+import type { CaseStatus } from "@revenue-recovery/types";
 
 export default function ApprovalsPage() {
   const [escalatedCases, setEscalatedCases] = useState<any[]>([]);

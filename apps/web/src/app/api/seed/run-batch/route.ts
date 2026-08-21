@@ -6,7 +6,8 @@
 
 import { NextResponse } from "next/server";
 import { execSync } from "child_process";
-import { prisma, CaseStatus } from "@revenue-recovery/db";
+import { prisma } from "@revenue-recovery/db";
+import { CaseStatus } from "@revenue-recovery/types";
 import { getDiagnoseQueue } from "@/lib/queues";
 import type { ApiResponse } from "@revenue-recovery/types";
 

@@ -6,8 +6,34 @@
  * between the two processes type-safe and single-source-of-truth.
  */
 
-// ── Re-export DB enums so consumers have one import path ─────────────────────
-export { LeakType, CaseStatus, InterventionChannel } from "@revenue-recovery/db";
+// ── Shared enums defined directly here to ensure frontend safety ──────────────────
+export enum LeakType {
+  PAYMENT_DEGRADATION = "PAYMENT_DEGRADATION",
+  CHECKOUT_ABANDONMENT = "CHECKOUT_ABANDONMENT",
+  SUBSCRIPTION_FAILURE = "SUBSCRIPTION_FAILURE",
+  OVERDUE_RECEIVABLES = "OVERDUE_RECEIVABLES",
+}
+
+export enum CaseStatus {
+  DETECTED = "DETECTED",
+  DIAGNOSED = "DIAGNOSED",
+  INTERVENING = "INTERVENING",
+  RECOVERED = "RECOVERED",
+  PARTIALLY_RECOVERED = "PARTIALLY_RECOVERED",
+  FAILED = "FAILED",
+  ESCALATED = "ESCALATED",
+  STOPPED = "STOPPED",
+}
+
+export enum InterventionChannel {
+  EMAIL = "EMAIL",
+  SMS = "SMS",
+  WHATSAPP = "WHATSAPP",
+  VOICE = "VOICE",
+  PAYMENT_RETRY = "PAYMENT_RETRY",
+  PAYMENT_LINK = "PAYMENT_LINK",
+  HUMAN_HANDOFF = "HUMAN_HANDOFF",
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AGENT PIPELINE — structured payloads exchanged between pipeline stages

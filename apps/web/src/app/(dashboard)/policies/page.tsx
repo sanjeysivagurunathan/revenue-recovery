@@ -6,9 +6,11 @@
  */
 
 import { prisma } from "@revenue-recovery/db";
+import { LeakType, InterventionChannel } from "@revenue-recovery/types";
 import { Shield, Clock, PhoneOff, CheckCircle2 } from "lucide-react";
 
 export const metadata = { title: "Recovery Policies" };
+export const dynamic = "force-dynamic";
 
 export default async function PoliciesPage() {
   const policies = await prisma.recoveryPolicy.findMany();

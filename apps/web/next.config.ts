@@ -2,8 +2,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* ── Transpile shared monorepo packages ── */
-  transpilePackages: ["@revenue-recovery/db", "@revenue-recovery/types"],
+  /* ── Only transpile types package — db package must stay server-only ── */
+  transpilePackages: ["@revenue-recovery/types"],
+
+  /* ── Keep Prisma and its Node.js built-ins out of the webpack bundle ── */
+  serverExternalPackages: ["@prisma/client", "@revenue-recovery/db"],
 
   /* ── Experimental features ── */
   experimental: {

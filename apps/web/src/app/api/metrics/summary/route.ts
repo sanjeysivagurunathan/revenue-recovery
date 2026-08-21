@@ -5,7 +5,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { prisma, CaseStatus, LeakType } from "@revenue-recovery/db";
+import { prisma } from "@revenue-recovery/db";
+import { CaseStatus, LeakType } from "@revenue-recovery/types";
 import type { ApiResponse, MetricsSummary } from "@revenue-recovery/types";
 
 export async function GET() {
