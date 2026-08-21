@@ -1,0 +1,5 @@
+Open Docker Desktop
+Start PostgreSQL & Redis :docker-compose up -d
+Push the Database Schema & Generate Prisma Client:npm run db:push
+Seed the Demo Data:npx tsx seed/synthetic-cases.ts
+Start the Development Server:npm run dev

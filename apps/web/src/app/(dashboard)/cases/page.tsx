@@ -12,15 +12,11 @@ import { useEffect, useState } from "react";
 import {
   Search,
   Filter,
-  ArrowRight,
   Clock,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   HelpCircle,
-  TrendingUp,
-  Mail,
-  MessageSquare,
   RefreshCw,
   Eye,
 } from "lucide-react";
@@ -106,15 +102,16 @@ export default function CasesPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-6.5rem)] relative overflow-hidden">
+    <div className="flex h-full min-h-0 relative overflow-hidden">
       {/* ── Cases List (Left Side) ── */}
-      <div className="flex-1 flex flex-col min-w-0 pr-4 overflow-y-auto">
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex-1 flex flex-col min-w-0 pr-0 md:pr-5 overflow-y-auto">
+        <div className="mb-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">Revenue Cases</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Revenue Cases</h1>
+            <p className="text-[11px] text-muted-foreground mt-1">
               Live status of automated interventions and recovery pipelines.
             </p>
+            {!loading && <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-[0.08em]">{total} records</p>}
           </div>
           <button
             onClick={fetchCases}
@@ -126,19 +123,19 @@ export default function CasesPage() {
         </div>
 
         {/* ── Filters ── */}
-        <div className="mb-6 flex flex-wrap gap-3 items-center">
+        <div className="mb-5 flex flex-wrap gap-2 items-center">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-2.5 text-muted-foreground" size={16} />
+            <Search className="absolute left-3 top-2.5 text-muted-foreground" size={15} />
             <input
               type="text"
               placeholder="Search by customer, email, reference ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface border border-border-default rounded-lg pl-9 pr-4 py-2 text-sm text-foreground focus:outline-none focus:border-accent"
+              className="w-full surface border border-border-default rounded pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground"
             />
           </div>
 
-          <div className="flex items-center gap-2 bg-surface border border-border-default rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 surface border border-border-default rounded px-3 py-2">
             <Filter size={14} className="text-muted-foreground" />
             <select
               value={statusFilter}
@@ -154,7 +151,7 @@ export default function CasesPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-2 bg-surface border border-border-default rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 surface border border-border-default rounded px-3 py-2">
             <Filter size={14} className="text-muted-foreground" />
             <select
               value={typeFilter}
@@ -185,15 +182,16 @@ export default function CasesPage() {
           </div>
         ) : (
           <div className="card overflow-hidden">
-            <table className="w-full border-collapse text-left text-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-border-default text-muted-foreground text-xs font-semibold bg-surface-raised">
-                  <th className="p-4">Customer</th>
-                  <th className="p-4">Reference</th>
-                  <th className="p-4">Leak Type</th>
-                  <th className="p-4 text-right">Amount at Risk</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4 text-right">Action</th>
+                <tr className="border-b border-border-default text-muted-foreground text-[10px] uppercase tracking-[0.08em] font-semibold surface-2">
+                  <th className="px-4 py-3">Customer</th>
+                  <th className="px-4 py-3">Reference</th>
+                  <th className="px-4 py-3">Leak Type</th>
+                  <th className="px-4 py-3 text-right">Amount at Risk</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-default">
@@ -205,28 +203,28 @@ export default function CasesPage() {
                       selectedCase?.id === c.id ? "bg-surface-raised" : ""
                     }`}
                   >
-                    <td className="p-4">
+                    <td className="px-4 py-3">
                       <div className="font-medium text-foreground">{c.customer.name}</div>
                       <div className="text-xs text-muted-foreground">{c.customer.email}</div>
                     </td>
-                    <td className="p-4">
+                    <td className="px-4 py-3">
                       <code className="text-xs text-muted-foreground">{c.sourceRef}</code>
                     </td>
-                    <td className="p-4">
+                    <td className="px-4 py-3">
                       <span className="text-xs bg-surface-raised border border-border-default px-2 py-0.5 rounded text-foreground">
                         {c.leakType}
                       </span>
                     </td>
-                    <td className="p-4 text-right font-medium text-foreground">
+                    <td className="px-4 py-3 text-right font-medium text-foreground">
                       {c.currency} {Number(c.amountAtRisk).toLocaleString()}
                     </td>
-                    <td className="p-4">
+                    <td className="px-4 py-3">
                       <span className={`badge ${getStatusBadgeClass(c.status)}`}>
                         {getStatusIcon(c.status)}
                         <span className="ml-1">{c.status}</span>
                       </span>
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="px-4 py-3 text-right">
                       <button className="btn btn-ghost py-1 px-2.5 text-xs flex items-center gap-1">
                         <Eye size={12} /> View
                       </button>
@@ -234,15 +232,16 @@ export default function CasesPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
         )}
       </div>
 
       {/* ── Case Inspection Sidebar Drawer (Right Side) ── */}
       {selectedCase && (
-        <div className="w-[450px] border-l border-border-default bg-surface flex flex-col shrink-0 h-full overflow-hidden shadow-2xl transition-all duration-300 absolute right-0 top-0 md:relative z-10">
-          <div className="p-5 border-b border-border-default flex items-center justify-between">
+        <div className="w-full max-w-[420px] border-l border-border-default surface flex flex-col shrink-0 h-full overflow-hidden transition-all duration-300 absolute right-0 top-0 md:relative z-10">
+          <div className="p-4 border-b border-border-default flex items-center justify-between">
             <div>
               <h2 className="text-md font-semibold text-foreground">Case Inspection</h2>
               <code className="text-xs text-muted-foreground">{selectedCase.id}</code>
@@ -255,9 +254,9 @@ export default function CasesPage() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 space-y-5">
             {/* ── Customer Details Card ── */}
-            <div className="surface-2 rounded-xl p-4 border border-border-default space-y-3">
+            <div className="surface-2 rounded p-4 border border-border-default space-y-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Customer Profile
               </p>
@@ -284,7 +283,7 @@ export default function CasesPage() {
             </div>
 
             {/* ── Diagnosis Card ── */}
-            <div className="surface-2 rounded-xl p-4 border border-border-default space-y-3">
+            <div className="surface-2 rounded p-4 border border-border-default space-y-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Agent Diagnosis
               </p>
@@ -295,7 +294,7 @@ export default function CasesPage() {
                 </p>
               </div>
               {selectedCase.diagnosisPayload && (
-                <div className="text-xs bg-surface p-3 rounded-lg border border-border-default mt-2">
+                <div className="text-xs surface p-3 rounded border border-border-default mt-2">
                   <p className="font-medium text-foreground mb-1">Reasoning:</p>
                   <p className="text-muted-foreground leading-relaxed">
                     {selectedCase.diagnosisPayload.reasoning}

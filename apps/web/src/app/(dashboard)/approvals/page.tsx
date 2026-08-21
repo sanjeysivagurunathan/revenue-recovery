@@ -8,15 +8,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Check,
-  AlertTriangle,
-  UserCheck,
-  DollarSign,
-  TrendingUp,
-  RefreshCw,
-} from "lucide-react";
-import type { CaseStatus } from "@revenue-recovery/types";
+import { Check, AlertTriangle, UserCheck, RefreshCw } from "lucide-react";
 
 export default function ApprovalsPage() {
   const [escalatedCases, setEscalatedCases] = useState<any[]>([]);
@@ -66,10 +58,10 @@ export default function ApprovalsPage() {
 
   return (
     <div className="animate-fade-in-up">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Approval Queue</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">Approval Queue</h1>
+          <p className="text-[11px] text-muted-foreground mt-1 max-w-2xl">
             High-value cases requiring explicit operator sign-off before automated retry/contact sequences fire.
           </p>
         </div>
@@ -88,9 +80,9 @@ export default function ApprovalsPage() {
           <div className="h-24 skeleton w-full" />
         </div>
       ) : escalatedCases.length === 0 ? (
-        <div className="card p-16 flex flex-col items-center justify-center text-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-surface-raised flex items-center justify-center text-success">
-            <UserCheck size={28} />
+        <div className="card p-12 flex flex-col items-center justify-center text-center gap-4">
+          <div className="w-12 h-12 rounded border border-border-default surface-2 flex items-center justify-center text-success">
+            <UserCheck size={22} />
           </div>
           <div>
             <h3 className="text-md font-medium text-foreground">All Clear!</h3>
@@ -102,7 +94,7 @@ export default function ApprovalsPage() {
       ) : (
         <div className="space-y-4">
           {escalatedCases.map((c) => (
-            <div key={c.id} className="card p-5 flex flex-col md:flex-row gap-5 items-start md:items-center justify-between border-l-4 border-l-warning">
+            <div key={c.id} className="card p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between border-l-2 border-l-warning">
               <div className="space-y-2 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-muted-foreground">CASE #{c.id.slice(-6)}</span>
@@ -111,7 +103,7 @@ export default function ApprovalsPage() {
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <span className="text-[10px] text-muted-foreground block uppercase">Customer</span>
                     <p className="font-semibold text-foreground text-sm mt-0.5">{c.customer.name}</p>
@@ -132,7 +124,7 @@ export default function ApprovalsPage() {
                 </div>
 
                 {c.diagnosisPayload && (
-                  <div className="bg-surface p-3 rounded-lg border border-border-default text-xs text-muted-foreground max-w-3xl">
+                  <div className="surface p-3 rounded border border-border-default text-xs text-muted-foreground max-w-3xl">
                     <span className="font-semibold text-foreground">Claude reasoning:</span> {c.diagnosisPayload.reasoning}
                   </div>
                 )}

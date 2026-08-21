@@ -1,16 +1,13 @@
 /**
- * apps/web/src/app/globals.css
- *
- * Global design system tokens — dark-mode-first premium aesthetic.
- * All colors use HSL CSS variables for easy theming.
+ * Global design system — monochrome, compact, glass surfaces.
+ * Depth comes from opacity, blur, and hairline borders only.
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
-/* ── Tailwind v4 Theme Configuration ──────────────────────────────────────── */
 @theme {
   --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
   --color-surface: hsl(var(--surface));
   --color-surface-raised: hsl(var(--surface-2));
   --color-border-default: hsl(var(--border));
@@ -20,115 +17,98 @@
   --color-success: hsl(var(--success));
   --color-danger: hsl(var(--danger));
   --color-warning: hsl(var(--warning));
-  
-  --animate-pulse-dot: pulse-glow 2s infinite;
+  --color-info: hsl(var(--info));
+
+  --animate-pulse-dot: pulse-dot 1.8s ease-in-out infinite;
 }
 
-/* ── Design Tokens ─────────────────────────────────────────────────────────── */
 :root {
-  /* Base */
-  --background: 222 47% 5%;
-  --surface:    222 40% 8%;
-  --surface-2:  222 35% 11%;
-  --surface-3:  222 30% 15%;
-  --border:     222 25% 18%;
-  --border-subtle: 222 25% 14%;
+  --background: 0 0% 3%;
+  --surface: 0 0% 7%;
+  --surface-2: 0 0% 10%;
+  --surface-3: 0 0% 14%;
+  --border: 0 0% 22%;
+  --border-subtle: 0 0% 16%;
 
-  /* Foreground */
-  --foreground:       210 40% 95%;
-  --foreground-muted: 215 20% 55%;
-  --foreground-dim:   215 15% 35%;
+  --foreground: 0 0% 96%;
+  --foreground-muted: 0 0% 62%;
+  --foreground-dim: 0 0% 43%;
 
-  /* Brand */
-  --brand:        246 84% 67%;    /* indigo-500 */
-  --brand-hover:  246 84% 72%;
-  --brand-muted:  246 84% 20%;
+  /* Keep the status API, but deliberately render every state in monochrome. */
+  --brand: 0 0% 96%;
+  --brand-hover: 0 0% 100%;
+  --brand-muted: 0 0% 16%;
+  --success: 0 0% 88%;
+  --success-muted: 0 0% 15%;
+  --warning: 0 0% 74%;
+  --warning-muted: 0 0% 13%;
+  --danger: 0 0% 60%;
+  --danger-muted: 0 0% 11%;
+  --info: 0 0% 72%;
+  --info-muted: 0 0% 14%;
 
-  /* Semantic */
-  --success:      142 71% 45%;
-  --success-muted:142 71% 12%;
-  --warning:       38 92% 50%;
-  --warning-muted: 38 92% 12%;
-  --danger:         0 84% 60%;
-  --danger-muted:   0 84% 12%;
-  --info:         199 89% 48%;
-  --info-muted:   199 89% 12%;
-
-  /* Gradient stops */
-  --gradient-start: 246 84% 20%;
-  --gradient-end:   199 89% 15%;
-
-  /* Radius */
-  --radius-sm: 6px;
-  --radius:    10px;
-  --radius-lg: 16px;
-
-  /* Shadows */
-  --shadow-sm:  0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
-  --shadow:     0 4px 16px rgba(0,0,0,.5), 0 2px 4px rgba(0,0,0,.3);
-  --shadow-lg:  0 12px 40px rgba(0,0,0,.6), 0 4px 8px rgba(0,0,0,.4);
-  --glow-brand: 0 0 24px hsla(246,84%,67%,.25);
-  --glow-success: 0 0 20px hsla(142,71%,45%,.2);
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --sidebar-width: 244px;
 }
 
-/* ── Base Styles ───────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; }
 
 html { font-size: 16px; -webkit-font-smoothing: antialiased; }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background-color: hsl(var(--background));
+  min-height: 100vh;
+  font-family: var(--font-inter), "Inter", system-ui, sans-serif;
+  background: hsl(var(--background));
   color: hsl(var(--foreground));
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 code, pre, kbd {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
-/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: hsl(var(--surface)); }
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover { background: hsl(var(--foreground-dim)); }
+::selection { background: hsl(var(--foreground) / 0.2); }
 
-/* ── Utility Classes ───────────────────────────────────────────────────────── */
-.surface   { background: hsl(var(--surface)); }
-.surface-2 { background: hsl(var(--surface-2)); }
-.surface-3 { background: hsl(var(--surface-3)); }
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb { background: hsl(var(--foreground) / 0.2); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--foreground) / 0.35); }
+
+/* Translucent neutral panels make the shell feel like glass without visual noise. */
+.surface {
+  background: hsl(var(--surface) / 0.82);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.surface-2 { background: hsl(var(--surface-2) / 0.78); }
+.surface-3 { background: hsl(var(--surface-3) / 0.72); }
 
 .card {
-  background: hsl(var(--surface));
+  background: hsl(var(--surface) / 0.78);
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition: background-color 0.16s ease, border-color 0.16s ease;
 }
 .card:hover {
-  box-shadow: var(--shadow);
-  border-color: hsl(var(--border-subtle));
-}
-
-.card-glow {
-  background: linear-gradient(135deg, hsl(var(--surface)) 0%, hsl(var(--surface-2)) 100%);
-  border: 1px solid hsl(var(--brand) / 0.25);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow), var(--glow-brand);
+  background: hsl(var(--surface-2) / 0.84);
+  border-color: hsl(var(--foreground) / 0.28);
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 10px;
-  border-radius: 99px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  padding: 3px 7px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
   text-transform: uppercase;
 }
 
@@ -144,59 +124,54 @@ code, pre, kbd {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 18px;
+  min-height: 34px;
+  padding: 7px 13px;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
   cursor: pointer;
-  transition: all 0.15s ease;
-  border: none;
-  outline: none;
   text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 1px solid hsl(var(--foreground));
+  outline-offset: 2px;
 }
 .btn-primary {
-  background: hsl(var(--brand));
-  color: white;
-  box-shadow: var(--shadow-sm);
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border-color: hsl(var(--foreground));
 }
-.btn-primary:hover {
-  background: hsl(var(--brand-hover));
-  box-shadow: var(--glow-brand), var(--shadow-sm);
-  transform: translateY(-1px);
-}
+.btn-primary:hover { background: transparent; color: hsl(var(--foreground)); }
 .btn-ghost {
-  background: transparent;
+  background: hsl(var(--surface) / 0.56);
   color: hsl(var(--foreground-muted));
-  border: 1px solid hsl(var(--border));
+  border-color: hsl(var(--border));
 }
-.btn-ghost:hover {
-  background: hsl(var(--surface-2));
-  color: hsl(var(--foreground));
-}
+.btn-ghost:hover { background: hsl(var(--surface-2)); color: hsl(var(--foreground)); border-color: hsl(var(--foreground) / 0.3); }
 
-/* ── Stat Animations ─────────────────────────────────────────────────────── */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: var(--shadow-sm); }
-  50%       { box-shadow: var(--glow-brand), var(--shadow); }
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
 }
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.42; }
+  50% { opacity: 0.72; }
 }
 
-.animate-fade-in-up { animation: fadeInUp 0.4s ease forwards; }
-
+.animate-fade-in-up { animation: fadeInUp 0.28s ease-out both; }
 .skeleton {
-  background: linear-gradient(90deg,
-    hsl(var(--surface-2)) 25%,
-    hsl(var(--surface-3)) 50%,
-    hsl(var(--surface-2)) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: var(--radius-sm);
+  background: hsl(var(--surface-3));
+  border: 1px solid hsl(var(--border-subtle));
+  border-radius: var(--radius);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
 }

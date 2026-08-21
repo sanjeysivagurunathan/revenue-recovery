@@ -26,21 +26,19 @@ export function Header() {
     <header
       className="
         flex items-center justify-between
-        h-14 px-6 shrink-0
-        border-b border-default bg-surface
+        h-14 px-5 shrink-0
+        border-b border-default surface
       "
     >
       {/* ── Page title ── */}
-      <p className="text-sm font-semibold text-foreground">{title}</p>
+      <p className="text-sm font-semibold tracking-tight text-foreground">{title}</p>
 
       {/* ── System status indicator ── */}
       <div className="flex items-center gap-2">
-        {/* Animated pulse dot — green indicates the agent worker is connected */}
-        <div className="relative flex items-center justify-center w-5 h-5">
-          <span className="absolute inline-flex h-2.5 w-2.5 rounded-full bg-green-400 opacity-75 animate-ping" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse-dot" />
+        <div className="flex items-center justify-center w-4 h-4">
+          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-foreground animate-pulse-dot" />
         </div>
-        <span className="text-xs text-muted-foreground">Agent active</span>
+        <span className="text-[11px] text-muted-foreground">Agent active</span>
       </div>
     </header>
   );

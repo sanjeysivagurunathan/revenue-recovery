@@ -6,8 +6,7 @@
  */
 
 import { prisma } from "@revenue-recovery/db";
-import { LeakType, InterventionChannel } from "@revenue-recovery/types";
-import { Shield, Clock, PhoneOff, CheckCircle2 } from "lucide-react";
+import { Shield, CheckCircle2 } from "lucide-react";
 
 export const metadata = { title: "Recovery Policies" };
 export const dynamic = "force-dynamic";
@@ -52,28 +51,28 @@ export default async function PoliciesPage() {
   const displayPolicies = policies.length > 0 ? policies : defaultPolicies;
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="space-y-5 animate-fade-in-up">
       {/* ── Header ── */}
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Recovery Policies</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Recovery Policies</h1>
+        <p className="text-[11px] text-muted-foreground mt-1">
           Operational guardrails and constraints enforcing strict compliance boundary rules.
         </p>
       </div>
 
       {/* ── Policies Grid ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {displayPolicies.map((p) => (
-          <div key={p.id} className="card p-5 flex flex-col justify-between space-y-5">
+          <div key={p.id} className="card p-4 flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">{p.name}</h3>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider block mt-1">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-[0.08em] block mt-1">
                     {p.leakType.replace(/_/g, " ")}
                   </span>
                 </div>
-                <div className="p-1 rounded bg-accent/20 text-accent">
+                <div className="p-1 rounded bg-accent/20 text-accent border border-border-default">
                   <Shield size={16} />
                 </div>
               </div>
@@ -103,14 +102,14 @@ export default async function PoliciesPage() {
 
             {/* Allowed Channels */}
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.08em]">
                 Approved Outreach Channels
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {p.allowedChannels.map((channel) => (
                   <span
                     key={channel}
-                    className="text-[10px] font-medium bg-surface-raised border border-border-default px-2 py-0.5 rounded text-foreground flex items-center gap-1"
+                    className="text-[10px] font-medium surface-2 border border-border-default px-2 py-1 rounded text-foreground flex items-center gap-1"
                   >
                     <CheckCircle2 size={10} className="text-success" />
                     {channel}
