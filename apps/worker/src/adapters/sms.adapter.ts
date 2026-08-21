@@ -36,17 +36,18 @@ function buildMessage(payload: SmsPayload): string {
  * and marks it as delivered — no actual message is sent.
  */
 export async function sendSms(payload: SmsPayload): Promise<void> {
+  const isWhatsApp = payload.channel === "WHATSAPP";
   const fromNumber = process.env["TWILIO_FROM_NUMBER"];
   const whatsappNumber = process.env["TWILIO_WHATSAPP_NUMBER"] ?? "whatsapp:+14155238886";
   const message = buildMessage(payload);
 
-  // ── MOCK MODE (no Twilio credentials configured) ──────────────────────────
-  if (!fromNumber) {
+  // ── MOCK MODE FOR SMS ONLY (when no Twilio SMS number is purchased) ───────
+  if (!isWhatsApp && !fromNumber) {
     logger.info(
       { to: payload.to, channel: payload.channel, message, caseId: payload.caseId },
-      "[SmsAdapter] 🔇 MOCK MODE — message would have been sent (no TWILIO_FROM_NUMBER configured)"
+      "[SmsAdapter] 🔇 MOCK MODE (SMS) — message logged (no TWILIO_FROM_NUMBER configured)"
     );
-    return; // Treat as success — the job completes without network call
+    return;
   }
 
   // ── LIVE MODE (Twilio credentials present) ────────────────────────────────
@@ -61,16 +62,17 @@ export async function sendSms(payload: SmsPayload): Promise<void> {
   const twilio = (await import("twilio")).default;
   const client = twilio(accountSid, authToken);
 
-  const from =
-    payload.channel === "WHATSAPP"
-      ? whatsappNumber
-      : fromNumber;
+  const from = payload.channel === "WHATSAPP" ? whatsappNumber : fromNumber!;
+  const to = payload.channel === "WHATSAPP" ? `whatsapp:${payload.to}` : payload.to;
+  const contentSid = process.env["TWILIO_WHATSAPP_CONTENT_SID"];
 
-  const to =
-    payload.channel === "WHATSAPP"
-      ? `whatsapp:${payload.to}`
-      : payload.to;
+  const createParams: any = { from, to };
+  if (payload.channel === "WHATSAPP" && contentSid) {
+    createParams.contentSid = contentSid;
+  } else {
+    createParams.body = message;
+  }
 
-  await client.messages.create({ from, to, body: message });
+  await client.messages.create(createParams);
   logger.info({ to: payload.to, channel: payload.channel, caseId: payload.caseId }, "[SmsAdapter] Message sent via Twilio");
 }

@@ -8,8 +8,13 @@
 import { Resend } from "resend";
 import { logger } from "../lib/logger.js";
 
-const resend = new Resend(process.env["RESEND_API_KEY"]);
-const FROM = process.env["RESEND_FROM_EMAIL"] ?? "onboarding@resend.dev";
+function getResendClient(): Resend {
+  const apiKey = process.env["RESEND_API_KEY"];
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY is not configured in your .env file.");
+  }
+  return new Resend(apiKey);
+}
 
 export interface EmailPayload {
   to: string;
@@ -49,7 +54,9 @@ export async function sendRecoveryEmail(payload: EmailPayload): Promise<void> {
     </div>
   `;
 
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html });
+  const resend = getResendClient();
+  const from = process.env["RESEND_FROM_EMAIL"] ?? "onboarding@resend.dev";
+  const { error } = await resend.emails.send({ from, to, subject, html });
 
   if (error) {
     throw new Error(`Resend email failed: ${error.message}`);
