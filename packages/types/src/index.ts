@@ -168,3 +168,100 @@ export interface MetricsSummary {
   medianTimeToRecoveryMs: number;
   p90TimeToRecoveryMs: number;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RAZORPAY WEBHOOKS — structures for incoming webhook payloads
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface RazorpayWebhookPayload {
+  entity: "event";
+  account_id: string;
+  event: string;
+  contains: string[];
+  payload: {
+    payment?: {
+      entity: RazorpayPaymentEntity;
+    };
+    order?: {
+      entity: RazorpayOrderEntity;
+    };
+    subscription?: {
+      entity: RazorpaySubscriptionEntity;
+    };
+  };
+  created_at: number;
+}
+
+export interface RazorpayPaymentEntity {
+  id: string;
+  entity: "payment";
+  amount: number;
+  currency: string;
+  status: string;
+  order_id: string | null;
+  invoice_id: string | null;
+  international: boolean;
+  method: string;
+  amount_refunded: number;
+  refund_status: string | null;
+  captured: boolean;
+  description: string;
+  card_id: string | null;
+  bank: string | null;
+  wallet: string | null;
+  vpa: string | null;
+  email: string;
+  contact: string;
+  notes: Record<string, string>;
+  fee: number | null;
+  tax: number | null;
+  error_code: string | null;
+  error_description: string | null;
+  error_source: string | null;
+  error_step: string | null;
+  error_reason: string | null;
+  acquirer_data: Record<string, unknown>;
+  created_at: number;
+}
+
+export interface RazorpayOrderEntity {
+  id: string;
+  entity: "order";
+  amount: number;
+  amount_paid: number;
+  amount_due: number;
+  currency: string;
+  receipt: string;
+  offer_id: string | null;
+  status: string;
+  attempts: number;
+  notes: Record<string, string>;
+  created_at: number;
+}
+
+export interface RazorpaySubscriptionEntity {
+  id: string;
+  entity: "subscription";
+  plan_id: string;
+  customer_id: string;
+  status: string;
+  current_start: number | null;
+  current_end: number | null;
+  ended_at: number | null;
+  quantity: number;
+  notes: Record<string, string>;
+  charge_at: number | null;
+  start_at: number | null;
+  end_at: number | null;
+  auth_attempts: number;
+  total_count: number;
+  paid_count: number;
+  customer_notify: boolean;
+  created_at: number;
+  expire_by: number | null;
+  short_url: string | null;
+  has_scheduled_changes: boolean;
+  change_scheduled_at: number | null;
+  source: string;
+  payment_method: string;
+}
