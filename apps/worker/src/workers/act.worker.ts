@@ -60,6 +60,7 @@ export function registerActWorker(): Worker {
       /* ── 3. Execute the (possibly overridden) action ─────────────────────── */
       let metadata: Record<string, unknown> = {};
       let newStatus: CaseStatus = CaseStatus.INTERVENING;
+      let shouldIncrementAttempts = false;
 
       switch (actionToExecute) {
 
@@ -75,6 +76,7 @@ export function registerActWorker(): Worker {
             sourceRef: revenueCase.sourceRef,
           });
           metadata = { razorpay_order_id: orderId };
+          shouldIncrementAttempts = true;
           break;
         }
 
@@ -100,6 +102,7 @@ export function registerActWorker(): Worker {
           });
 
           metadata = { payment_link_url: shortUrl };
+          shouldIncrementAttempts = true;
           break;
         }
 
@@ -136,6 +139,7 @@ export function registerActWorker(): Worker {
             }
           }
           metadata = { channel_used: channel };
+          shouldIncrementAttempts = true;
           break;
         }
 
@@ -149,6 +153,7 @@ export function registerActWorker(): Worker {
             caseId,
           });
           metadata = { follow_up_scheduled: true };
+          shouldIncrementAttempts = true;
           break;
         }
 
@@ -187,7 +192,10 @@ export function registerActWorker(): Worker {
         }),
         prisma.revenueCase.update({
           where: { id: caseId },
-          data: { status: newStatus },
+          data: { 
+            status: newStatus,
+            ...(shouldIncrementAttempts ? { attemptsUsed: { increment: 1 } } : {}),
+          },
         }),
         prisma.auditEntry.create({
           data: {

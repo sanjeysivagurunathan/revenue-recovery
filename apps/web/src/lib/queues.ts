@@ -11,10 +11,18 @@ import { getRedis } from "./redis";
 
 /** Lazily-created Queue singleton to prevent build-time Redis connection */
 let _detectQueue: Queue | null = null;
+let _diagnoseQueue: Queue | null = null;
 
 export function getDetectQueue(): Queue {
   if (!_detectQueue) {
     _detectQueue = new Queue("case:detect", { connection: getRedis() });
   }
   return _detectQueue;
+}
+
+export function getDiagnoseQueue(): Queue {
+  if (!_diagnoseQueue) {
+    _diagnoseQueue = new Queue("case:diagnose", { connection: getRedis() });
+  }
+  return _diagnoseQueue;
 }

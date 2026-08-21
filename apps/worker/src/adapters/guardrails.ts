@@ -82,8 +82,9 @@ export function runGuardrails(
   }
 
   // ── 5. High-value approval threshold ──────────────────────────────────────
+  const hasHumanApproval = revenueCase.events.some((e) => e.type === "human_approved");
   const threshold = Number(process.env["HIGH_VALUE_APPROVAL_THRESHOLD"] ?? 50000);
-  if (Number(amountAtRisk) > threshold && attemptsUsed === 0) {
+  if (Number(amountAtRisk) > threshold && attemptsUsed === 0 && !hasHumanApproval) {
     logger.warn({ caseId, amountAtRisk }, "[Guardrails] High-value case requires human approval");
     return {
       allowed: false,

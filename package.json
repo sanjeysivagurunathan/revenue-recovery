@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "AI Revenue Recovery Agent — Razorpay Buildathon Track 03",
+  "packageManager": "npm@11.16.0",
   "workspaces": [
     "apps/*",
     "packages/*"

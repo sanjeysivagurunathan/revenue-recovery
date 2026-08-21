@@ -1,133 +1,204 @@
-/*
+/**
  * apps/web/src/app/globals.css
  *
- * Design system tokens — all values are CSS custom properties so every
- * component can reference them without importing JS theme objects.
- *
- * Colour palette: slate-based dark mode with indigo/violet accent.
- * Typography: Inter variable font (loaded in layout.tsx).
+ * Global design system tokens — dark-mode-first premium aesthetic.
+ * All colors use HSL CSS variables for easy theming.
  */
 
 @import "tailwindcss";
 
-/* ── Font variable ─────────────────────────────────────────────────────────── */
+/* ── Tailwind v4 Theme Configuration ──────────────────────────────────────── */
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --color-background: hsl(var(--background));
+  --color-surface: hsl(var(--surface));
+  --color-surface-raised: hsl(var(--surface-2));
+  --color-border-default: hsl(var(--border));
+  --color-muted-foreground: hsl(var(--foreground-muted));
+  --color-accent: hsl(var(--brand));
+  --color-accent-hover: hsl(var(--brand-hover));
+  --color-success: hsl(var(--success));
+  --color-danger: hsl(var(--danger));
+  --color-warning: hsl(var(--warning));
+  
+  --animate-pulse-dot: pulse-glow 2s infinite;
 }
 
-/* ── Design tokens (dark mode first — this is an ops dashboard) ────────────── */
+/* ── Google Fonts ─────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Design Tokens ─────────────────────────────────────────────────────────── */
 :root {
-  /* Background layers */
-  --background: 222 47% 5%;          /* near-black slate */
-  --surface: 222 39% 9%;             /* card surface */
-  --surface-raised: 222 35% 13%;    /* elevated element */
-  --border: 222 30% 18%;
+  /* Base */
+  --background: 222 47% 5%;
+  --surface:    222 40% 8%;
+  --surface-2:  222 35% 11%;
+  --surface-3:  222 30% 15%;
+  --border:     222 25% 18%;
+  --border-subtle: 222 25% 14%;
 
-  /* Text */
-  --foreground: 210 40% 98%;
-  --muted-foreground: 215 20% 65%;
+  /* Foreground */
+  --foreground:       210 40% 95%;
+  --foreground-muted: 215 20% 55%;
+  --foreground-dim:   215 15% 35%;
 
-  /* Accent — indigo/violet for CTA and highlights */
-  --accent: 239 84% 67%;            /* indigo-500 equivalent */
-  --accent-hover: 239 84% 60%;
-  --accent-foreground: 0 0% 100%;
+  /* Brand */
+  --brand:        246 84% 67%;    /* indigo-500 */
+  --brand-hover:  246 84% 72%;
+  --brand-muted:  246 84% 20%;
 
-  /* Status colours */
-  --success: 142 76% 45%;
-  --warning: 45 93% 58%;
-  --danger: 0 84% 60%;
-  --info: 199 89% 56%;
+  /* Semantic */
+  --success:      142 71% 45%;
+  --success-muted:142 71% 12%;
+  --warning:       38 92% 50%;
+  --warning-muted: 38 92% 12%;
+  --danger:         0 84% 60%;
+  --danger-muted:   0 84% 12%;
+  --info:         199 89% 48%;
+  --info-muted:   199 89% 12%;
 
-  /* Recovered ₹ green */
-  --recovered: 160 84% 39%;
+  /* Gradient stops */
+  --gradient-start: 246 84% 20%;
+  --gradient-end:   199 89% 15%;
 
   /* Radius */
-  --radius: 0.75rem;
+  --radius-sm: 6px;
+  --radius:    10px;
+  --radius-lg: 16px;
 
-  /* Sidebar */
-  --sidebar-width: 240px;
+  /* Shadows */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
+  --shadow:     0 4px 16px rgba(0,0,0,.5), 0 2px 4px rgba(0,0,0,.3);
+  --shadow-lg:  0 12px 40px rgba(0,0,0,.6), 0 4px 8px rgba(0,0,0,.4);
+  --glow-brand: 0 0 24px hsla(246,84%,67%,.25);
+  --glow-success: 0 0 20px hsla(142,71%,45%,.2);
 }
 
-/* ── Base reset ────────────────────────────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+/* ── Base Styles ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
 
 body {
+  font-family: 'Inter', system-ui, sans-serif;
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: var(--font-sans);
-  font-feature-settings: "rlig" 1, "calt" 1;
+  line-height: 1.6;
 }
 
-/* ── Scrollbar styling ─────────────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+code, pre, kbd {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: hsl(var(--surface)); }
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground));
-}
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--foreground-dim)); }
 
-/* ── Utility classes ───────────────────────────────────────────────────────── */
-.bg-background    { background-color: hsl(var(--background)); }
-.bg-surface       { background-color: hsl(var(--surface)); }
-.bg-surface-raised { background-color: hsl(var(--surface-raised)); }
+/* ── Utility Classes ───────────────────────────────────────────────────────── */
+.surface   { background: hsl(var(--surface)); }
+.surface-2 { background: hsl(var(--surface-2)); }
+.surface-3 { background: hsl(var(--surface-3)); }
 
-.text-foreground       { color: hsl(var(--foreground)); }
-.text-muted-foreground { color: hsl(var(--muted-foreground)); }
-.text-accent           { color: hsl(var(--accent)); }
-.text-success          { color: hsl(var(--success)); }
-.text-warning          { color: hsl(var(--warning)); }
-.text-danger           { color: hsl(var(--danger)); }
-.text-recovered        { color: hsl(var(--recovered)); }
-
-.border-default { border-color: hsl(var(--border)); }
-
-/* ── Glassmorphism card ────────────────────────────────────────────────────── */
-.glass-card {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+.card {
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card:hover {
+  box-shadow: var(--shadow);
+  border-color: hsl(var(--border-subtle));
 }
 
-/* ── Status badge colours ──────────────────────────────────────────────────── */
-.status-detected          { color: hsl(var(--info));    background: hsl(var(--info) / 0.15); }
-.status-diagnosing        { color: hsl(var(--warning)); background: hsl(var(--warning) / 0.15); }
-.status-diagnosed         { color: hsl(var(--warning)); background: hsl(var(--warning) / 0.15); }
-.status-intervening       { color: hsl(var(--accent));  background: hsl(var(--accent) / 0.15); }
-.status-awaiting-customer { color: hsl(var(--accent));  background: hsl(var(--accent) / 0.15); }
-.status-recovered         { color: hsl(var(--recovered)); background: hsl(var(--recovered) / 0.15); }
-.status-partially-recovered { color: hsl(var(--success)); background: hsl(var(--success) / 0.15); }
-.status-failed            { color: hsl(var(--danger));  background: hsl(var(--danger) / 0.15); }
-.status-escalated         { color: hsl(var(--warning)); background: hsl(var(--warning) / 0.15); }
-.status-stopped           { color: hsl(var(--muted-foreground)); background: hsl(var(--border)); }
-
-/* ── Animations ────────────────────────────────────────────────────────────── */
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.6; transform: scale(0.85); }
+.card-glow {
+  background: linear-gradient(135deg, hsl(var(--surface)) 0%, hsl(var(--surface-2)) 100%);
+  border: 1px solid hsl(var(--brand) / 0.25);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow), var(--glow-brand);
 }
 
-@keyframes slide-in-right {
-  from { transform: translateX(16px); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
+.badge-success { background: hsl(var(--success-muted)); color: hsl(var(--success)); }
+.badge-warning { background: hsl(var(--warning-muted)); color: hsl(var(--warning)); }
+.badge-danger  { background: hsl(var(--danger-muted));  color: hsl(var(--danger)); }
+.badge-info    { background: hsl(var(--info-muted));    color: hsl(var(--info)); }
+.badge-brand   { background: hsl(var(--brand-muted));   color: hsl(var(--brand)); }
+.badge-muted   { background: hsl(var(--surface-3));     color: hsl(var(--foreground-muted)); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  outline: none;
+  text-decoration: none;
+}
+.btn-primary {
+  background: hsl(var(--brand));
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+.btn-primary:hover {
+  background: hsl(var(--brand-hover));
+  box-shadow: var(--glow-brand), var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.btn-ghost {
+  background: transparent;
+  color: hsl(var(--foreground-muted));
+  border: 1px solid hsl(var(--border));
+}
+.btn-ghost:hover {
+  background: hsl(var(--surface-2));
+  color: hsl(var(--foreground));
+}
+
+/* ── Stat Animations ─────────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: var(--shadow-sm); }
+  50%       { box-shadow: var(--glow-brand), var(--shadow); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
 
-.animate-pulse-dot  { animation: pulse-dot 2s ease-in-out infinite; }
-.animate-slide-in   { animation: slide-in-right 0.25s ease-out; }
-.animate-fade-in    { animation: fade-in 0.3s ease-out; }
+.animate-fade-in-up { animation: fadeInUp 0.4s ease forwards; }
+
+.skeleton {
+  background: linear-gradient(90deg,
+    hsl(var(--surface-2)) 25%,
+    hsl(var(--surface-3)) 50%,
+    hsl(var(--surface-2)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius-sm);
+}

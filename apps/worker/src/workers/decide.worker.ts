@@ -79,12 +79,11 @@ Analyze the diagnosis and constraints, and decide on the next best action and ch
         },
       });
 
-      // 4. Update Case
+      // 4. Update Case status
       await prisma.revenueCase.update({
         where: { id: caseId },
         data: {
           status: CaseStatus.INTERVENING,
-          attemptsUsed: { increment: 1 },
         },
       });
 
