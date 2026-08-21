@@ -56,11 +56,23 @@ export async function sendRecoveryEmail(payload: EmailPayload): Promise<void> {
 
   const resend = getResendClient();
   const from = process.env["RESEND_FROM_EMAIL"] ?? "onboarding@resend.dev";
-  const { error } = await resend.emails.send({ from, to, subject, html });
+  
+  // ── HACKATHON DEMO OVERRIDE ──
+  // Resend free tier only allows sending to the registered account email.
+  // We override the destination here so you can test live delivery for all cases 
+  // without needing to verify a custom domain, but the dashboard UI will still show the fake emails!
+  const actualTo = process.env["TEST_EMAIL"] || "sanjudote45@gmail.com";
+
+  const { error } = await resend.emails.send({ 
+    from, 
+    to: actualTo, 
+    subject, 
+    html 
+  });
 
   if (error) {
     throw new Error(`Resend email failed: ${error.message}`);
   }
 
-  logger.info({ to, caseId }, "[EmailAdapter] Recovery email sent");
+  logger.info({ originalTo: to, actualTo, caseId }, "[EmailAdapter] Recovery email sent");
 }
