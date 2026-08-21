@@ -51,20 +51,19 @@ async function main() {
 
   // ── 3. Define the minimal presentation cases (One of each type) ──
   const caseDefinitions = [
-    { name: "Aman Gupta", status: CaseStatus.DETECTED, amount: 2500, type: LeakType.PAYMENT_DEGRADATION },
-    { name: "Priya Sharma", status: CaseStatus.DIAGNOSED, amount: 4999, type: LeakType.CHECKOUT_ABANDONMENT },
-    { name: "Rahul Verma", status: CaseStatus.INTERVENING, amount: 15000, type: LeakType.PAYMENT_DEGRADATION },
-    { name: "Karan Johar", status: CaseStatus.ESCALATED, amount: 75000, type: LeakType.PAYMENT_DEGRADATION },
-    { name: "Sneha Reddy", status: CaseStatus.RECOVERED, amount: 3500, type: LeakType.CHECKOUT_ABANDONMENT },
-    { name: "Vikram Singh", status: CaseStatus.FAILED, amount: 12000, type: LeakType.PAYMENT_DEGRADATION },
-    { name: "Anjali Desai", status: CaseStatus.STOPPED, amount: 6000, type: LeakType.CHECKOUT_ABANDONMENT }
+    { name: "Kunal", email: "sanjeyingames@gmail.com", status: CaseStatus.DETECTED, amount: 2500, type: LeakType.PAYMENT_DEGRADATION },
+    { name: "Arjun R", email: "sanjeyinlinkedin@gmail.com", status: CaseStatus.DIAGNOSED, amount: 4999, type: LeakType.CHECKOUT_ABANDONMENT },
+    { name: "Priya Menon", email: "sanjeyincareers@gmail.com", status: CaseStatus.INTERVENING, amount: 15000, type: LeakType.PAYMENT_DEGRADATION },
+    { name: "Karan Johar", email: "sanjudote45@gmail.com", status: CaseStatus.ESCALATED, amount: 75000, type: LeakType.PAYMENT_DEGRADATION },
+    { name: "Devakan N", email: "sanboy444666@gmail.com", status: CaseStatus.RECOVERED, amount: 3500, type: LeakType.CHECKOUT_ABANDONMENT },
+    { name: "Rahul S", email: "sanjeyinutube@gmail.com", status: CaseStatus.FAILED, amount: 12000, type: LeakType.PAYMENT_DEGRADATION },
+    { name: "Krish E", email: "tamilpoeticvibes@gmail.com", status: CaseStatus.STOPPED, amount: 6000, type: LeakType.CHECKOUT_ABANDONMENT }
   ];
 
   console.log(`👥 Seeding ${caseDefinitions.length} presentation cases...`);
 
   for (let i = 0; i < caseDefinitions.length; i++) {
-    const { name, status, amount, type } = caseDefinitions[i];
-    const email = `${name.split(' ')[0].toLowerCase()}@example.com`;
+    const { name, email, status, amount, type } = caseDefinitions[i];
     const phone = `+919900000${100 + i}`;
 
     const customer = await prisma.customer.create({
