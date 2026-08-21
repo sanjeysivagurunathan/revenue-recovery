@@ -33,7 +33,6 @@ if (process.env["NODE_ENV"] !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-// ── Re-export generated types so consumers don't need to import from two places ──
 export type {
   Customer,
   RevenueCase,
@@ -41,10 +40,10 @@ export type {
   Intervention,
   RecoveryPolicy,
   AuditEntry,
-  Prisma,
 } from "../generated/client/index.js";
 
 export {
+  Prisma,
   LeakType,
   CaseStatus,
   InterventionChannel,

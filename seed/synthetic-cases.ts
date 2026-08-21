@@ -3,9 +3,12 @@
  *
  * Seeder to populate the database with realistic recovery cases.
  * Generates customers, recovery policies, and synthetic cases.
+ *
+ * Usage:
+ *   npx tsx seed/synthetic-cases.ts
  */
 
-import { prisma, LeakType, CaseStatus, InterventionChannel } from "@revenue-recovery/db";
+import { prisma, Prisma, LeakType, CaseStatus, InterventionChannel } from "@revenue-recovery/db";
 
 async function main() {
   console.log("🌱 Seeding database...");
@@ -57,10 +60,10 @@ async function main() {
     prisma.recoveryPolicy.create({
       data: {
         name: "B2B Receivables Chasing Policy",
-        leakType: LeakType.OVERDUE_RECEIVABLES,
+        leakType: LeakType.RECEIVABLE_OVERDUE,
         maxAttempts: 5,
         cooldownHours: 72,
-        allowedChannels: [InterventionChannel.EMAIL, InterventionChannel.SMS, InterventionChannel.HUMAN_HANDOFF],
+        allowedChannels: [InterventionChannel.EMAIL, InterventionChannel.SMS],
         quietHoursStart: 18,
         quietHoursEnd: 9,
       },
@@ -73,25 +76,16 @@ async function main() {
   console.log(`👥 Seeding ${customerCount} customers and cases...`);
 
   const leakTypes = Object.values(LeakType);
-  const statuses = [
-    CaseStatus.DETECTED,
-    CaseStatus.DIAGNOSED,
-    CaseStatus.INTERVENING,
-    CaseStatus.RECOVERED,
-    CaseStatus.FAILED,
-    CaseStatus.STOPPED,
-    CaseStatus.ESCALATED,
-  ];
 
   const firstNames = ["Rahul", "Priya", "Amit", "Sneha", "Vikram", "Anjali", "Rohan", "Meera", "Karan", "Tanvi"];
-  const lastNames = ["Sharma", "Verma", "Patel", "Mehta", "Iyer", "Nair", "Reddy", "Gupta", "Joshi", "Das"];
+  const lastNames  = ["Sharma", "Verma", "Patel", "Mehta", "Iyer", "Nair", "Reddy", "Gupta", "Joshi", "Das"];
 
   for (let i = 0; i < customerCount; i++) {
-    const firstName = firstNames[i % firstNames.length];
-    const lastName = lastNames[i % lastNames.length];
-    const name = `${firstName} ${lastName}`;
-    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`;
-    const phone = `+919900000${100 + i}`;
+    const firstName = firstNames[i % firstNames.length]!;
+    const lastName  = lastNames[i % lastNames.length]!;
+    const name      = `${firstName} ${lastName}`;
+    const email     = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`;
+    const phone     = `+919900000${100 + i}`;
 
     const customer = await prisma.customer.create({
       data: {
@@ -103,26 +97,27 @@ async function main() {
       },
     });
 
-    const leakType = leakTypes[i % leakTypes.length];
-    const policy = policies.find((p) => p.leakType === leakType)!;
+    const leakType = leakTypes[i % leakTypes.length]!;
+    const policy   = policies.find((p) => p.leakType === leakType)!;
 
-    // Pick status: distribute them realistically
-    // Most should be recovered, detected, or intervening for active demonstration
-    let status = CaseStatus.DETECTED;
-    if (i < 5) status = CaseStatus.RECOVERED;
+    // Distribute statuses realistically
+    let status: CaseStatus;
+    if (i < 5)       status = CaseStatus.RECOVERED;
     else if (i < 10) status = CaseStatus.INTERVENING;
-    else if (i < 13) status = CaseStatus.ESCALATED; // For Approvals queue
+    else if (i < 13) status = CaseStatus.ESCALATED;   // → Approvals queue
     else if (i < 15) status = CaseStatus.STOPPED;
     else if (i < 17) status = CaseStatus.FAILED;
     else if (i < 20) status = CaseStatus.DIAGNOSED;
+    else             status = CaseStatus.DETECTED;
 
-    // Create case with some variance in amountAtRisk
-    // Make sure a few are high value (> 50,000 paise / INR 500) to test approval
-    const amountAtRisk = status === CaseStatus.ESCALATED ? 75000 : Math.floor(Math.random() * 15000) + 1000;
+    // High-value cases (index 11-12) trigger the approval guardrail
+    const amountAtRisk = i >= 11 && i <= 12 ? 75000 : Math.floor(Math.random() * 15000) + 1000;
 
     const sourceRef = `${leakType === LeakType.SUBSCRIPTION_FAILURE ? "sub" : "pay"}_${Math.random()
       .toString(36)
       .substring(2, 12)}`;
+
+    const hasDiagnosis = status !== CaseStatus.DETECTED;
 
     const rc = await prisma.revenueCase.create({
       data: {
@@ -134,20 +129,23 @@ async function main() {
         amountRecovered: status === CaseStatus.RECOVERED ? amountAtRisk : 0,
         sourceRef,
         policyId: policy.id,
-        attemptsUsed: status === CaseStatus.RECOVERED || status === CaseStatus.FAILED ? policy.maxAttempts : 0,
+        attemptsUsed: (status === CaseStatus.RECOVERED || status === CaseStatus.FAILED) ? policy.maxAttempts : 0,
         maxAttempts: policy.maxAttempts,
-        rootCause: status !== CaseStatus.DETECTED ? "insufficient_funds" : null,
-        diagnosisPayload: status !== CaseStatus.DETECTED ? {
-          root_cause: "insufficient_funds",
-          confidence: 0.95,
-          recommended_urgency: "high",
-          reasoning: "The payment failed due to insufficient funds in the customer's account.",
-        } : null,
+        rootCause: hasDiagnosis ? "insufficient_funds" : null,
+        diagnosisPayload: hasDiagnosis
+          ? {
+              root_cause: "insufficient_funds",
+              confidence: 0.95,
+              recommended_urgency: "high",
+              reasoning: "The payment failed due to insufficient funds in the customer's account.",
+            }
+          : Prisma.JsonNull,
+        resolvedAt: (status === CaseStatus.RECOVERED || status === CaseStatus.FAILED) ? new Date() : null,
       },
     });
 
-    // ── Create Events/Interventions for active cases ──
-    if (status !== CaseStatus.DETECTED) {
+    // ── Create Events & Audit Entries for non-new cases ──
+    if (hasDiagnosis) {
       await prisma.caseEvent.create({
         data: {
           caseId: rc.id,
@@ -179,6 +177,17 @@ async function main() {
           reasoning: "New leak detected via Razorpay webhook (payment.failed)",
         },
       });
+
+      await prisma.auditEntry.create({
+        data: {
+          caseId: rc.id,
+          actor: "system:diagnose-worker",
+          action: "diagnosis",
+          fromStatus: CaseStatus.DETECTED,
+          toStatus: CaseStatus.DIAGNOSED,
+          reasoning: "Claude classified root cause as 'insufficient_funds' with 95% confidence.",
+        },
+      });
     }
 
     if (status === CaseStatus.RECOVERED) {
@@ -203,6 +212,13 @@ async function main() {
         },
       });
     } else if (status === CaseStatus.ESCALATED) {
+      await prisma.caseEvent.create({
+        data: {
+          caseId: rc.id,
+          type: "guardrail.high_value_threshold",
+          payload: { amountAtRisk, threshold: 50000 },
+        },
+      });
       await prisma.auditEntry.create({
         data: {
           caseId: rc.id,
@@ -210,12 +226,35 @@ async function main() {
           action: "execution",
           fromStatus: CaseStatus.DIAGNOSED,
           toStatus: CaseStatus.ESCALATED,
-          reasoning: `Amount at risk (${amountAtRisk}) exceeds the high-value threshold. Human approval required before first outbound action.`,
+          reasoning: `Amount at risk (₹${amountAtRisk}) exceeds the high-value threshold (₹50,000). Human approval required before first outbound action.`,
+        },
+      });
+    } else if (status === CaseStatus.STOPPED) {
+      await prisma.auditEntry.create({
+        data: {
+          caseId: rc.id,
+          actor: "system:guardrails",
+          action: "state_transition",
+          fromStatus: CaseStatus.INTERVENING,
+          toStatus: CaseStatus.STOPPED,
+          reasoning: "Case halted: customer requested opt-out from marketing communications.",
+        },
+      });
+    } else if (status === CaseStatus.FAILED) {
+      await prisma.auditEntry.create({
+        data: {
+          caseId: rc.id,
+          actor: "system:verify-worker",
+          action: "state_transition",
+          fromStatus: CaseStatus.INTERVENING,
+          toStatus: CaseStatus.FAILED,
+          reasoning: `Max attempts (${policy.maxAttempts}) exhausted with no payment captured. Case failed.`,
         },
       });
     }
   }
 
+  console.log(`✅ Seeded ${customerCount} customers and cases`);
   console.log("🌱 Database seeded successfully!");
   await prisma.$disconnect();
 }
