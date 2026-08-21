@@ -66,12 +66,7 @@ export async function sendSms(payload: SmsPayload): Promise<void> {
   const to = payload.channel === "WHATSAPP" ? `whatsapp:${payload.to}` : payload.to;
   const contentSid = process.env["TWILIO_WHATSAPP_CONTENT_SID"];
 
-  const createParams: any = { from, to };
-  if (payload.channel === "WHATSAPP" && contentSid) {
-    createParams.contentSid = contentSid;
-  } else {
-    createParams.body = message;
-  }
+  const createParams: any = { from, to, body: message };
 
   await client.messages.create(createParams);
   logger.info({ to: payload.to, channel: payload.channel, caseId: payload.caseId }, "[SmsAdapter] Message sent via Twilio");
