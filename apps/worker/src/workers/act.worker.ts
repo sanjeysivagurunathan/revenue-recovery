@@ -143,6 +143,7 @@ export function registerActWorker(): Worker {
               await sendSms({
                 to: revenueCase.customer.phone,
                 customerName: revenueCase.customer.name,
+                customerEmail: revenueCase.customer.email,
                 amountAtRisk: revenueCase.amountAtRisk.toString(),
                 currency: revenueCase.currency,
                 paymentLink: shortUrl,

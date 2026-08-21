@@ -11,6 +11,7 @@ import { logger } from "../lib/logger.js";
 export interface SmsPayload {
   to: string;
   customerName: string;
+  customerEmail?: string;
   amountAtRisk: string;
   currency: string;
   paymentLink?: string;
@@ -79,7 +80,7 @@ export async function sendSms(payload: SmsPayload): Promise<void> {
     );
     const { sendRecoveryEmail } = await import("./email.adapter.js");
     await sendRecoveryEmail({
-      to: payload.to,
+      to: payload.customerEmail || payload.to,
       customerName: payload.customerName,
       amountAtRisk: payload.amountAtRisk,
       currency: payload.currency,
