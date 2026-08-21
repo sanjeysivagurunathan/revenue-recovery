@@ -12,7 +12,7 @@ import { logger } from "../lib/logger.js";
 import { actQueue } from "../lib/queues.js";
 import { generateDecision } from "../lib/llm.js";
 
-export const DECIDE_QUEUE = "case:decide";
+export const DECIDE_QUEUE = "case-decide";
 
 export function registerDecideWorker(): Worker {
   const worker = new Worker<CaseJobData>(

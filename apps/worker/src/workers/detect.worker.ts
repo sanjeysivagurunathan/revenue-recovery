@@ -20,7 +20,7 @@ import { createRedisConnection } from "../lib/redis.js";
 import { logger } from "../lib/logger.js";
 import { diagnoseQueue } from "../lib/queues.js";
 
-export const DETECT_QUEUE = "case:detect";
+export const DETECT_QUEUE = "case-detect";
 
 /** Helper to extract customer details from Razorpay payload safely */
 function extractCustomerData(payload: RazorpayWebhookPayload) {

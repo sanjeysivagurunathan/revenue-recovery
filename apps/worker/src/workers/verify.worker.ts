@@ -24,7 +24,7 @@ import { logger } from "../lib/logger.js";
 import { diagnoseQueue } from "../lib/queues.js";
 import Razorpay from "razorpay";
 
-export const VERIFY_QUEUE = "case:verify";
+export const VERIFY_QUEUE = "case-verify";
 
 function getRazorpayClient(): Razorpay | null {
   const keyId = process.env["RAZORPAY_KEY_ID"];

@@ -13,7 +13,7 @@ import { logger } from "../lib/logger.js";
 import { decideQueue } from "../lib/queues.js";
 import { generateDiagnosis } from "../lib/llm.js";
 
-export const DIAGNOSE_QUEUE = "case:diagnose";
+export const DIAGNOSE_QUEUE = "case-diagnose";
 
 export function registerDiagnoseWorker(): Worker {
   const worker = new Worker<CaseJobData>(

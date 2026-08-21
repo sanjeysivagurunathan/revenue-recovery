@@ -24,7 +24,7 @@ import { sendRecoveryEmail } from "../adapters/email.adapter.js";
 import { sendSms } from "../adapters/sms.adapter.js";
 import { retryPayment, createPaymentLink } from "../adapters/razorpay.adapter.js";
 
-export const ACT_QUEUE = "case:act";
+export const ACT_QUEUE = "case-act";
 
 export function registerActWorker(): Worker {
   const worker = new Worker<ActJobData>(
