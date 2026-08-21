@@ -102,9 +102,9 @@ export default function CasesPage() {
   };
 
   return (
-    <div className="flex h-full min-h-0 relative overflow-hidden">
+    <div className="flex flex-col lg:flex-row gap-6 relative min-h-full items-start">
       {/* ── Cases List (Left Side) ── */}
-      <div className="flex-1 flex flex-col min-w-0 pr-0 md:pr-5 overflow-y-auto">
+      <div className="flex-1 w-full min-w-0 flex flex-col">
         <div className="mb-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">Revenue Cases</h1>
@@ -240,7 +240,7 @@ export default function CasesPage() {
 
       {/* ── Case Inspection Sidebar Drawer (Right Side) ── */}
       {selectedCase && (
-        <div className="w-full max-w-[420px] border-l border-border-default surface flex flex-col shrink-0 h-full overflow-hidden transition-all duration-300 absolute right-0 top-0 md:relative z-10">
+        <div className="w-full lg:w-[420px] lg:sticky lg:top-0 border border-border-default surface rounded flex flex-col shrink-0 max-h-[calc(100vh-100px)] overflow-hidden transition-all duration-300 z-10">
           <div className="p-4 border-b border-border-default flex items-center justify-between">
             <div>
               <h2 className="text-md font-semibold text-foreground">Case Inspection</h2>
