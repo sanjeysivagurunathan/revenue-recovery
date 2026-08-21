@@ -16,6 +16,13 @@ async function simulateWebhook() {
   const webhookSecret = process.env["RAZORPAY_WEBHOOK_SECRET"] || "Sanjey@45";
   const paymentId = `pay_${Math.random().toString(36).substring(2, 12)}`;
 
+  const args = process.argv.slice(2);
+  const emailIndex = args.indexOf("--email");
+  const phoneIndex = args.indexOf("--phone");
+
+  const targetEmail = emailIndex !== -1 ? args[emailIndex + 1] : process.env["TEST_EMAIL"] || "sanjudote45@gmail.com";
+  const targetPhone = phoneIndex !== -1 ? args[phoneIndex + 1] : process.env["TEST_PHONE"] || "+919790317406";
+
   const payload = {
     entity: "event",
     account_id: "acc_mock123",
@@ -40,8 +47,8 @@ async function simulateWebhook() {
           bank: null,
           wallet: null,
           vpa: "sanjey@okhdfcbank",
-          email: process.env["TEST_EMAIL"] || "sanjudote45@gmail.com",
-          contact: process.env["TEST_PHONE"] || "+919790317406",
+          email: targetEmail,
+          contact: targetPhone,
           notes: {
             customer_name: "Sanjey",
           },
