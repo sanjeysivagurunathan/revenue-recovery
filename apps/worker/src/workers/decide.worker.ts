@@ -43,30 +43,22 @@ export function registerDecideWorker(): Worker {
 
       // 1. Construct Prompt
       const prompt = `
-You must decide the best recovery action and channel for a revenue leak.
+Decide the best recovery action for a failed payment. Be concise — max 1 sentence for reasoning.
 
-Customer Details:
-Name: ${revenueCase.customer.name}
-Amount at Risk: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
-Risk Score: ${revenueCase.customer.riskScore}
+Amount: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
 Previous Attempts: ${revenueCase.attemptsUsed} / ${revenueCase.maxAttempts}
-
-Diagnosis:
 Root Cause: ${revenueCase.rootCause}
-Confidence: ${diagnosisPayload?.confidence}
 Urgency: ${diagnosisPayload?.recommended_urgency}
-Reasoning: ${diagnosisPayload?.reasoning}
 
-Constraints (Strictly enforce these — no exceptions):
+Constraints (no exceptions):
 - Allowed Actions: ${allowedActions.join(", ")}
 - Allowed Channels: ${allowedChannels.join(", ")}
-- You cannot choose an action or channel outside of the allowed lists above.
-- If attempts used >= max attempts, you MUST choose "escalate_human" and "HUMAN_HANDOFF".
-- If the diagnosis reasoning mentions "permanently blocked", "blocked by the issuing bank", "card blocked", or "frozen", you MUST NOT choose "retry_payment". Retrying a blocked card always fails. Instead choose "send_reminder" via "WHATSAPP" if phone is available, else "EMAIL".
-- If root_cause is "insufficient_funds" and attempts < max attempts, prefer "retry_payment" first.
-- For all other cases on first contact, prefer "send_reminder" via "WHATSAPP" if phone is available, else "EMAIL".
+- If attempts >= max attempts, MUST choose "escalate_human" + "HUMAN_HANDOFF".
+- If reasoning mentions "permanently blocked" or "card blocked", MUST NOT choose "retry_payment" — choose "send_reminder" via "WHATSAPP" or "EMAIL".
+- If root_cause is "insufficient_funds" and attempts < max, prefer "retry_payment".
+- Otherwise first contact: prefer "send_reminder" via "WHATSAPP" if phone available, else "EMAIL".
 
-Analyze the diagnosis and constraints, and decide on the next best action and channel.
+Respond with action, channel, and 1 short sentence reasoning.
 `;
 
       // 2. Call Claude

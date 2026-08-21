@@ -151,7 +151,10 @@ export async function POST(req: NextRequest) {
   console.log("[Webhook] Razorpay event received:", event);
 
   /* ── 4a. Handle SUCCESS events → mark case as RECOVERED ── */
-  const successEvents = ["order.paid", "payment.captured", "payment_link.paid", "payment.authorized"];
+  // Note: We only handle order.paid and payment_link.paid — NOT payment.authorized.
+  // Razorpay fires payment.authorized before order.paid for the same transaction.
+  // Acting on both would create duplicate RECOVERED audit entries.
+  const successEvents = ["order.paid", "payment.captured", "payment_link.paid"];
   if (successEvents.includes(event)) {
     await handlePaymentSuccess(payload);
     return NextResponse.json({ received: true });

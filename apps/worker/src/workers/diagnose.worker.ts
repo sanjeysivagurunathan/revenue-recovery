@@ -39,20 +39,18 @@ export function registerDiagnoseWorker(): Worker {
 
       // 1. Construct Prompt context
       const prompt = `
-You are tasked with diagnosing a revenue leak.
+You are diagnosing a failed payment. Be concise — max 1 sentence for reasoning.
 
-Customer Details:
-Name: ${revenueCase.customer.name}
-Email: ${revenueCase.customer.email}
-Phone: ${revenueCase.customer.phone || "None"}
-Amount at Risk: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
+Amount: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
 Leak Type: ${revenueCase.leakType}
 
-Event History (Webhook Payloads):
-${JSON.stringify(revenueCase.events.map(e => ({ type: e.type, payload: e.payload })), null, 2)}
+Webhook error fields:
+${JSON.stringify(revenueCase.events.map(e => {
+  const p = (e.payload as any)?.payload?.payment?.entity;
+  return p ? { error_code: p.error_code, error_description: p.error_description, error_reason: p.error_reason, error_step: p.error_step } : { type: e.type };
+}), null, 2)}
 
-Analyze the webhook events, specifically looking at Razorpay 'error_code', 'error_reason', and 'error_step' if present.
-Identify the root cause from the allowed enum values. Provide confidence and recommended urgency.
+Identify the root cause from allowed enum values. Keep reasoning to 1 short sentence. Provide confidence and recommended urgency.
 `;
 
       // 2. Call Claude
