@@ -20,8 +20,8 @@ async function runTest() {
   const emailIndex = args.indexOf("--email");
   const phoneIndex = args.indexOf("--phone");
 
-  const targetEmail = emailIndex !== -1 ? args[emailIndex + 1] : process.env["TEST_EMAIL"] || "sanjudote45@gmail.com";
-  const targetPhone = phoneIndex !== -1 ? args[phoneIndex + 1] : process.env["TEST_PHONE"] || "+919790317406";
+  const targetEmail = (emailIndex !== -1 && args[emailIndex + 1]) ? args[emailIndex + 1]! : process.env["TEST_EMAIL"] || "sanjudote45@gmail.com";
+  const targetPhone = (phoneIndex !== -1 && args[phoneIndex + 1]) ? args[phoneIndex + 1]! : process.env["TEST_PHONE"] || "+919790317406";
 
   console.log("\n=======================================================");
   console.log("🚀 Testing AI Revenue Recovery Outbound Adapters");

@@ -15,7 +15,7 @@ dotenv.config();
 async function simulatePaymentSuccess() {
   const args = process.argv.slice(2);
   const caseIndex = args.indexOf("--caseId");
-  const caseId = caseIndex !== -1 ? args[caseIndex + 1] : null;
+  const caseId = (caseIndex !== -1 && args[caseIndex + 1]) ? args[caseIndex + 1]! : null;
 
   if (!caseId) {
     console.error("❌ Usage: npx tsx scripts/test-payment-success.ts --caseId <caseId>");

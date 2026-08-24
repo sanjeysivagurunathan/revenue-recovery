@@ -22,34 +22,34 @@ async function simulateWebhook() {
   const args = process.argv.slice(2);
 
   const typeIndex = args.indexOf("--type");
-  const leakTypeArg = typeIndex !== -1 ? args[typeIndex + 1]?.toLowerCase() : "payment";
+  const leakTypeArg = (typeIndex !== -1 && args[typeIndex + 1] ? args[typeIndex + 1] : "payment")?.toLowerCase();
   const isSubscription = leakTypeArg === "subscription" || leakTypeArg === "subscription_failure";
   const isCheckout = leakTypeArg === "checkout" || leakTypeArg === "checkout_abandonment";
   const isInvoice = leakTypeArg === "invoice" || leakTypeArg === "receivable" || leakTypeArg === "receivable_overdue";
 
   const paymentIndex = args.indexOf("--paymentId");
-  const paymentId = paymentIndex !== -1 ? args[paymentIndex + 1] : `pay_${Math.random().toString(36).substring(2, 12)}`;
+  const paymentId = (paymentIndex !== -1 && args[paymentIndex + 1]) ? args[paymentIndex + 1]! : `pay_${Math.random().toString(36).substring(2, 12)}`;
 
   const subIndex = args.indexOf("--subId");
-  const subId = subIndex !== -1 ? args[subIndex + 1] : `sub_${Math.random().toString(36).substring(2, 12)}`;
+  const subId = (subIndex !== -1 && args[subIndex + 1]) ? args[subIndex + 1]! : `sub_${Math.random().toString(36).substring(2, 12)}`;
 
   const invIndex = args.indexOf("--invId");
-  const invId = invIndex !== -1 ? args[invIndex + 1] : `inv_${Math.random().toString(36).substring(2, 12)}`;
+  const invId = (invIndex !== -1 && args[invIndex + 1]) ? args[invIndex + 1]! : `inv_${Math.random().toString(36).substring(2, 12)}`;
 
   const orderId = `order_${Math.random().toString(36).substring(2, 12)}`;
 
   const emailIndex = args.indexOf("--email");
   const phoneIndex = args.indexOf("--phone");
 
-  const targetEmail = emailIndex !== -1 ? args[emailIndex + 1] : process.env["TEST_EMAIL"] || "kopykatqueryonline@gmail.com";
-  const targetPhone = phoneIndex !== -1 ? args[phoneIndex + 1] : process.env["TEST_PHONE"] || "+919790317406";
+  const targetEmail = (emailIndex !== -1 && args[emailIndex + 1]) ? args[emailIndex + 1]! : process.env["TEST_EMAIL"] || "kopykatqueryonline@gmail.com";
+  const targetPhone = (phoneIndex !== -1 && args[phoneIndex + 1]) ? args[phoneIndex + 1]! : process.env["TEST_PHONE"] || "+919790317406";
 
   const amountIndex = args.indexOf("--amount");
   const defaultAmount = isInvoice ? 1500000 : 299900; // Default ₹15,000 for B2B invoice, ₹2,999 for B2C
-  const amountPaise = amountIndex !== -1 ? parseInt(args[amountIndex + 1]) * 100 : defaultAmount;
+  const amountPaise = (amountIndex !== -1 && args[amountIndex + 1]) ? parseInt(args[amountIndex + 1]!) * 100 : defaultAmount;
 
   const errorIndex = args.indexOf("--error");
-  const errorCode = errorIndex !== -1 ? args[errorIndex + 1] : (
+  const errorCode = (errorIndex !== -1 && args[errorIndex + 1]) ? args[errorIndex + 1]! : (
     isSubscription ? "upi_mandate_failed" : isCheckout ? "cart_price_shock" : isInvoice ? "invoice_dispute" : "insufficient_funds"
   );
 
