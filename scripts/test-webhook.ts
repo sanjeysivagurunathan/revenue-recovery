@@ -24,6 +24,7 @@ async function simulateWebhook() {
   const typeIndex = args.indexOf("--type");
   const leakTypeArg = typeIndex !== -1 ? args[typeIndex + 1]?.toLowerCase() : "payment";
   const isSubscription = leakTypeArg === "subscription" || leakTypeArg === "subscription_failure";
+  const isCheckout = leakTypeArg === "checkout" || leakTypeArg === "checkout_abandonment";
 
   const paymentIndex = args.indexOf("--paymentId");
   const paymentId = paymentIndex !== -1 ? args[paymentIndex + 1] : `pay_${Math.random().toString(36).substring(2, 12)}`;
@@ -31,14 +32,21 @@ async function simulateWebhook() {
   const subIndex = args.indexOf("--subId");
   const subId = subIndex !== -1 ? args[subIndex + 1] : `sub_${Math.random().toString(36).substring(2, 12)}`;
 
+  const orderId = `order_${Math.random().toString(36).substring(2, 12)}`;
+
   const emailIndex = args.indexOf("--email");
   const phoneIndex = args.indexOf("--phone");
 
   const targetEmail = emailIndex !== -1 ? args[emailIndex + 1] : process.env["TEST_EMAIL"] || "kopykatqueryonline@gmail.com";
   const targetPhone = phoneIndex !== -1 ? args[phoneIndex + 1] : process.env["TEST_PHONE"] || "+919790317406";
 
+  const amountIndex = args.indexOf("--amount");
+  const amountPaise = amountIndex !== -1 ? parseInt(args[amountIndex + 1]) * 100 : 299900; // Default INR 2999
+
   const errorIndex = args.indexOf("--error");
-  const errorCode = errorIndex !== -1 ? args[errorIndex + 1] : (isSubscription ? "upi_mandate_failed" : "insufficient_funds");
+  const errorCode = errorIndex !== -1 ? args[errorIndex + 1] : (
+    isSubscription ? "upi_mandate_failed" : isCheckout ? "cart_price_shock" : "insufficient_funds"
+  );
 
   let errorDesc = "Payment was declined by the bank due to insufficient funds in customer account.";
   if (errorCode === "card_blocked") {
@@ -47,11 +55,56 @@ async function simulateWebhook() {
     errorDesc = "Recurring debit failed: UPI Autopay mandate could not be executed due to customer bank limit or mandate expiry.";
   } else if (errorCode === "card_expired") {
     errorDesc = "Recurring subscription charge failed because the card linked to the recurring mandate has expired.";
+  } else if (errorCode === "cart_price_shock") {
+    errorDesc = "Customer reached checkout but abandoned after seeing the final cart total (price too high).";
+  } else if (errorCode === "shipping_cost_surprise") {
+    errorDesc = "Customer abandoned cart after unexpected shipping fee was added at checkout.";
+  } else if (errorCode === "payment_method_missing") {
+    errorDesc = "Customer attempted checkout but had no saved payment method (card/UPI) available.";
   }
 
   let payload: any;
 
-  if (isSubscription) {
+  if (isCheckout) {
+    // Simulate an order.abandoned event — customer initiated checkout but never paid
+    // We inject directly via the Inngest API rather than the webhook (no Razorpay signature needed for orders)
+    const abandonedAtSec = Math.floor(Date.now() / 1000) - 20 * 60; // 20 minutes ago
+    payload = {
+      entity: "event",
+      account_id: "acc_mock123",
+      event: "order.abandoned",
+      contains: ["order"],
+      payload: {
+        order: {
+          entity: {
+            id: orderId,
+            entity: "order",
+            amount: amountPaise,
+            amount_paid: 0,
+            amount_due: amountPaise,
+            currency: "INR",
+            receipt: `rcpt_${orderId.slice(-8)}`,
+            offer_id: null,
+            status: "created",
+            attempts: 0,
+            notes: {
+              customer_name: "Sanjey",
+              email: targetEmail,
+              phone: targetPhone,
+              cart_items: "2x Product A, 1x Product B",
+              abandonment_reason: errorCode,
+            },
+            created_at: abandonedAtSec,
+          },
+        },
+      },
+      created_at: abandonedAtSec,
+      // Pass extra fields for pipeline extraction
+      email: targetEmail,
+      name: "Sanjey",
+      phone: targetPhone,
+    };
+  } else if (isSubscription) {
     payload = {
       entity: "event",
       account_id: "acc_mock123",
@@ -148,6 +201,53 @@ async function simulateWebhook() {
   }
 
   const bodyString = JSON.stringify(payload);
+  const leakTypeLabel = isCheckout ? "CHECKOUT_ABANDONMENT" : isSubscription ? "SUBSCRIPTION_FAILURE" : "PAYMENT_DEGRADATION";
+  const refId = isCheckout ? orderId : isSubscription ? subId : paymentId;
+
+  // For CHECKOUT_ABANDONMENT: bypass the webhook (no signature needed) and inject directly into Inngest
+  if (isCheckout) {
+    console.log("\n=======================================================");
+    console.log(`🛒 Injecting Simulated Checkout Abandonment: ${payload.event}`);
+    console.log(`🏷️ Leak Type: ${leakTypeLabel}`);
+    console.log(`🔑 Order ID: ${refId}`);
+    console.log(`👤 Customer: Sanjey (${targetEmail} | ${targetPhone})`);
+    console.log(`💰 Cart Value Abandoned: INR ${(amountPaise / 100).toFixed(2)}`);
+    console.log(`⚠️ Abandonment Reason: ${errorCode} — ${errorDesc}`);
+    console.log("=======================================================\n");
+
+    // Directly fire abandonment via the Next.js API route (uses inngest.send internally)
+    try {
+      const inngestPayload = {
+        email: targetEmail,
+        name: "Sanjey",
+        phone: targetPhone,
+        sourceRef: orderId,
+        amountPaise,
+        currency: "INR",
+        abandonmentReason: errorCode,
+        cartItems: "2x Product A, 1x Product B",
+      };
+
+      const res = await fetch("http://localhost:3000/api/test-abandonment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(inngestPayload),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        console.log("✅ Checkout abandonment event dispatched to Inngest pipeline!");
+        console.log("👉 Watch your Inngest UI (http://localhost:8288) or terminal: DETECT -> DIAGNOSE -> DECIDE -> ACT");
+        console.log("👉 Open http://localhost:3000/cases to see the new CHECKOUT_ABANDONMENT case.\n");
+      } else {
+        console.error("❌ Abandonment dispatch failed:", json);
+      }
+    } catch (err: any) {
+      console.error("\n❌ Error connecting to web app:", err.message);
+      console.log("💡 Ensure: npm run dev is running on http://localhost:3000");
+    }
+    return;
+  }
 
   // Compute valid HMAC SHA-256 signature using the configured webhook secret
   const signature = crypto
@@ -157,8 +257,8 @@ async function simulateWebhook() {
 
   console.log("\n=======================================================");
   console.log(`⚡ Injecting Simulated Razorpay Webhook: ${payload.event}`);
-  console.log(`🏷️ Leak Type: ${isSubscription ? "SUBSCRIPTION_FAILURE" : "PAYMENT_DEGRADATION"}`);
-  console.log(`🔑 Reference ID: ${isSubscription ? subId : paymentId}`);
+  console.log(`🏷️ Leak Type: ${leakTypeLabel}`);
+  console.log(`🔑 Reference ID: ${refId}`);
   console.log(`👤 Customer: Sanjey (${targetEmail} | ${targetPhone})`);
   console.log(`⚠️ Reason: ${errorCode} — ${errorDesc}`);
   console.log("=======================================================\n");

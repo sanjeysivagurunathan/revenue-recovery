@@ -49,8 +49,11 @@ export const recoveryPipelineFunction = inngest.createFunction(
       const orderEntity = rawPayload.payload?.order?.entity;
       const subEntity = rawPayload.payload?.subscription?.entity;
 
+      // CHECKOUT_ABANDONMENT: order.abandoned event — customer data from order notes or rawPayload override
       const customerEmail =
         paymentEntity?.email ||
+        orderEntity?.notes?.email ||
+        orderEntity?.notes?.customer_email ||
         subEntity?.notes?.email ||
         subEntity?.customer_email ||
         rawPayload.email ||
@@ -58,6 +61,8 @@ export const recoveryPipelineFunction = inngest.createFunction(
 
       const customerPhone =
         paymentEntity?.contact ||
+        orderEntity?.notes?.phone ||
+        orderEntity?.notes?.contact ||
         subEntity?.notes?.contact ||
         subEntity?.notes?.phone ||
         subEntity?.customer_contact ||
@@ -65,10 +70,13 @@ export const recoveryPipelineFunction = inngest.createFunction(
         null;
 
       const customerName =
+        orderEntity?.notes?.name ||
+        orderEntity?.notes?.customer_name ||
         subEntity?.notes?.customer_name ||
         subEntity?.notes?.name ||
         paymentEntity?.notes?.customer_name ||
         paymentEntity?.notes?.name ||
+        rawPayload.name ||
         customerEmail.split("@")[0];
 
       const amountPaise =
@@ -79,7 +87,7 @@ export const recoveryPipelineFunction = inngest.createFunction(
         199900;
 
       const amountAtRisk = amountPaise / 100;
-      const currency = paymentEntity?.currency || subEntity?.currency || "INR";
+      const currency = paymentEntity?.currency || orderEntity?.currency || subEntity?.currency || "INR";
 
       // 1. Find or create Customer
       let customer = await prisma.customer.findFirst({
@@ -175,7 +183,42 @@ export const recoveryPipelineFunction = inngest.createFunction(
 
       if (!revenueCase) throw new Error(`Case ${caseId} not found`);
 
-      const prompt = `
+      const isAbandonment = revenueCase.leakType === LeakType.CHECKOUT_ABANDONMENT;
+
+      const prompt = isAbandonment
+        ? `
+You are diagnosing a checkout abandonment — a customer added items to cart and reached checkout but did NOT complete payment. Be concise — max 1 sentence for reasoning.
+
+Amount abandoned: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
+Leak Type: CHECKOUT_ABANDONMENT
+
+Order details:
+${JSON.stringify(
+  revenueCase.events.map((e) => {
+    const o = (e.payload as any)?.payload?.order?.entity;
+    return {
+      event_type: e.type,
+      order_id: o?.id,
+      order_status: o?.status,
+      receipt: o?.receipt,
+      created_at: o?.created_at,
+      notes: o?.notes,
+    };
+  }),
+  null,
+  2
+)}
+
+Identify the root cause from allowed enum values SPECIFIC TO CHECKOUT ABANDONMENT:
+- "cart_price_shock": cart total is too high, customer balked at final price
+- "shipping_cost_surprise": unexpected shipping/taxes added at checkout caused abandonment  
+- "payment_method_missing": customer had no saved card/UPI at checkout
+- "bank_decline_soft": customer attempted payment but it was temporarily declined
+- "unknown": reason unclear from available data
+
+Keep reasoning to 1 short sentence. Provide confidence and recommended urgency.
+`
+        : `
 You are diagnosing a failed payment or recurring subscription renewal. Be concise — max 1 sentence for reasoning.
 
 Amount: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
@@ -277,7 +320,31 @@ Keep reasoning to 1 short sentence. Provide confidence and recommended urgency.
         "HUMAN_HANDOFF",
       ];
 
-      const prompt = `
+      const isAbandonment = revenueCase.leakType === LeakType.CHECKOUT_ABANDONMENT;
+
+      const prompt = isAbandonment
+        ? `
+Decide the best cart recovery action for a checkout abandonment. Be concise — max 1 sentence for reasoning.
+
+Cart Value Abandoned: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
+Leak Type: CHECKOUT_ABANDONMENT
+Previous Recovery Attempts: ${revenueCase.attemptsUsed} / ${revenueCase.maxAttempts}
+Diagnosed Root Cause: ${revenueCase.rootCause}
+Urgency: ${diagnosis.recommended_urgency}
+
+Constraints (no exceptions):
+- Allowed Actions: ${allowedActions.join(", ")}
+- Allowed Channels: ${allowedChannels.join(", ")}
+- If attempts >= max attempts, MUST choose "escalate_human" + "HUMAN_HANDOFF".
+- For checkout abandonment, ALWAYS prefer "send_payment_link" via "WHATSAPP" (fastest re-engagement) unless attempts > 1, then try "EMAIL" as follow-up.
+- If root_cause is "cart_price_shock", include a note in reasoning about offering a discount or free shipping coupon.
+- If root_cause is "payment_method_missing", choose "send_payment_link" to give them a direct Razorpay-hosted checkout link.
+- If root_cause is "shipping_cost_surprise", choose "send_reminder" via "EMAIL" with payment link.
+- Do NOT choose "retry_payment" for abandonment — there was no failed charge, only an incomplete checkout.
+
+Respond with action, channel, and 1 short sentence reasoning.
+`
+        : `
 Decide the best recovery action for a failed payment or recurring subscription. Be concise — max 1 sentence for reasoning.
 
 Amount: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
@@ -370,6 +437,8 @@ Respond with action, channel, and 1 short sentence reasoning.
           const itemDescription =
             revenueCase.leakType === LeakType.SUBSCRIPTION_FAILURE
               ? `Subscription renewal dues (case ${caseId})`
+              : revenueCase.leakType === LeakType.CHECKOUT_ABANDONMENT
+              ? `Complete your checkout — your cart is waiting! (case ${caseId})`
               : `Payment reminder (case ${caseId})`;
 
           const shortUrl = await createPaymentLink({
@@ -606,6 +675,8 @@ Respond with action, channel, and 1 short sentence reasoning.
         const followupDesc =
           caseRecord.leakType === LeakType.SUBSCRIPTION_FAILURE
             ? `Subscription renewal attempt ${retryResult.attemptNumber} (case ${caseId})`
+            : caseRecord.leakType === LeakType.CHECKOUT_ABANDONMENT
+            ? `Your cart is still waiting — complete checkout (attempt ${retryResult.attemptNumber}) (case ${caseId})`
             : `Payment reminder attempt ${retryResult.attemptNumber} (case ${caseId})`;
 
         const shortUrl = await createPaymentLink({

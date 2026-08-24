@@ -38,6 +38,15 @@
 - Inject a live recurring subscription failure (SUBSCRIPTION_FAILURE):
   npx tsx scripts/test-webhook.ts --type subscription --email kopykatqueryonline@gmail.com --error upi_mandate_failed
 
+- Inject a checkout abandonment (CHECKOUT_ABANDONMENT — cart price shock):
+  npx tsx scripts/test-webhook.ts --type checkout --email kopykatqueryonline@gmail.com --error cart_price_shock
+
+- Inject a checkout abandonment (CHECKOUT_ABANDONMENT — no saved payment method):
+  npx tsx scripts/test-webhook.ts --type checkout --email kopykatqueryonline@gmail.com --error payment_method_missing
+
+- Inject a checkout abandonment (CHECKOUT_ABANDONMENT — unexpected shipping fee):
+  npx tsx scripts/test-webhook.ts --type checkout --email kopykatqueryonline@gmail.com --error shipping_cost_surprise
+
 - Simulate instant payment recovery for a case:
   npx tsx scripts/test-payment-success.ts --caseId <case_id>
 
