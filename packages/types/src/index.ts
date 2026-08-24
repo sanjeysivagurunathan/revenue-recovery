@@ -55,6 +55,7 @@ export type RootCause =
   | "shipping_cost_surprise" // abandonment: shipping added at checkout
   | "payment_method_missing" // abandonment: no saved method
   | "invoice_dispute"     // B2B: customer disputes invoice
+  | "invoice_overdue"     // B2B: invoice past due / delayed settlement terms
   | "genuine_dispute"     // payment dispute opened
   | "unknown";
 
@@ -335,10 +336,13 @@ export type DiagnosisRootCause =
   | "insufficient_funds"
   | "card_expired"
   | "bank_decline_soft"
+  | "bank_decline_hard"
   | "upi_mandate_failed"
   | "cart_price_shock"
   | "shipping_cost_surprise"
   | "payment_method_missing"
+  | "invoice_dispute"
+  | "invoice_overdue"
   | "genuine_dispute"
   | "unknown";
 

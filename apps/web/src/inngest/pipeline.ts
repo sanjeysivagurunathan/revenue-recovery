@@ -261,10 +261,11 @@ ${JSON.stringify(
 )}
 
 Identify the root cause from allowed enum values:
+- "invoice_overdue": standard Net-30 or past-due invoice with delayed settlement cycle or pending payment approval
 - "invoice_dispute": client has contested invoice deliverables, line items, or pricing terms
 - "insufficient_funds": client liquidity/cashflow constraint, requests delayed settlement
 - "bank_decline_soft": temporary vendor payment portal or NEFT/RTGS banking issue
-- "unknown": general overdue reminder needed
+- "unknown": unrecognized reason
 
 Keep reasoning to 1 short sentence. Provide confidence and recommended urgency.
 `
