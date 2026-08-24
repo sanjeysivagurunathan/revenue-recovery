@@ -13,6 +13,8 @@ import crypto from "crypto";
 import { inngest } from "@/inngest/client";
 import { type RazorpayWebhookPayload, LeakType } from "@revenue-recovery/types";
 import { prisma, CaseStatus } from "@revenue-recovery/db";
+import { sendPaymentSuccessEmail } from "@/inngest/adapters/email";
+import { sendPaymentSuccessSms } from "@/inngest/adapters/sms";
 
 /** Verify the Razorpay webhook signature (HMAC-SHA256) */
 function verifyRazorpaySignature(
@@ -119,6 +121,11 @@ async function handlePaymentSuccess(payload: any): Promise<void> {
     0;
   const amountRecovered = amountPaise > 0 ? amountPaise / 100 : 0;
 
+  const updatedCase = await prisma.revenueCase.findUnique({
+    where: { id: matchedCaseId },
+    include: { customer: true },
+  });
+
   await prisma.$transaction([
     prisma.revenueCase.update({
       where: { id: matchedCaseId },
@@ -140,13 +147,49 @@ async function handlePaymentSuccess(payload: any): Promise<void> {
     }),
   ]);
 
+  // Dispatch payment success confirmation notifications (Email + WhatsApp)
+  if (updatedCase) {
+    const finalAmount =
+      amountRecovered > 0 ? amountRecovered.toString() : updatedCase.amountAtRisk.toString();
+
+    const receiptTasks: Promise<any>[] = [];
+
+    if (updatedCase.customer.email) {
+      receiptTasks.push(
+        sendPaymentSuccessEmail({
+          to: updatedCase.customer.email,
+          customerName: updatedCase.customer.name,
+          amountPaid: finalAmount,
+          currency: updatedCase.currency,
+          caseId: matchedCaseId,
+        }).catch((err) => console.warn("[Webhook:SuccessEmail] Warning:", err.message))
+      );
+    }
+
+    if (updatedCase.customer.phone || updatedCase.customer.email) {
+      receiptTasks.push(
+        sendPaymentSuccessSms({
+          to: updatedCase.customer.phone || updatedCase.customer.email,
+          customerName: updatedCase.customer.name,
+          customerEmail: updatedCase.customer.email,
+          amountPaid: finalAmount,
+          currency: updatedCase.currency,
+          caseId: matchedCaseId,
+          channel: "WHATSAPP",
+        }).catch((err) => console.warn("[Webhook:SuccessWhatsApp] Warning:", err.message))
+      );
+    }
+
+    await Promise.allSettled(receiptTasks);
+  }
+
   // Wake up Inngest waiting workflow immediately
   await inngest.send({
     name: "revenue/case.recovered",
     data: { caseId: matchedCaseId, amountRecovered },
   });
 
-  console.log(`[Webhook] ✅ Case ${matchedCaseId} marked as RECOVERED & Inngest notified — INR ${amountRecovered} recovered`);
+  console.log(`[Webhook] ✅ Case ${matchedCaseId} marked as RECOVERED & confirmation receipts sent — INR ${amountRecovered} recovered`);
 }
 
 export async function POST(req: NextRequest) {
