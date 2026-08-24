@@ -370,38 +370,8 @@ Respond with action, channel, and 1 short sentence reasoning.
           break;
         }
 
-        case "send_payment_link": {
-          const itemDescription =
-            revenueCase.leakType === LeakType.SUBSCRIPTION_FAILURE
-              ? `Subscription renewal dues (case ${caseId})`
-              : `Payment reminder (case ${caseId})`;
-
-          const shortUrl = await createPaymentLink({
-            caseId,
-            amountPaise: Math.round(Number(revenueCase.amountAtRisk) * 100),
-            currency: revenueCase.currency,
-            customerName: revenueCase.customer.name,
-            customerEmail: revenueCase.customer.email,
-            customerPhone: revenueCase.customer.phone,
-            description: itemDescription,
-          });
-
-          await sendRecoveryEmail({
-            to: revenueCase.customer.email,
-            customerName: revenueCase.customer.name,
-            amountAtRisk: revenueCase.amountAtRisk.toString(),
-            currency: revenueCase.currency,
-            paymentLink: shortUrl,
-            caseId,
-          });
-
-          metadata = { payment_link_url: shortUrl };
-          shouldIncrementAttempts = true;
-          break;
-        }
-
+        case "send_payment_link":
         case "send_reminder": {
-          const channel = intervention.channel;
           const itemDescription =
             revenueCase.leakType === LeakType.SUBSCRIPTION_FAILURE
               ? `Subscription renewal dues (case ${caseId})`
@@ -417,28 +387,43 @@ Respond with action, channel, and 1 short sentence reasoning.
             description: itemDescription,
           });
 
-          if (channel === "EMAIL") {
-            await sendRecoveryEmail({
-              to: revenueCase.customer.email,
-              customerName: revenueCase.customer.name,
-              amountAtRisk: revenueCase.amountAtRisk.toString(),
-              currency: revenueCase.currency,
-              paymentLink: shortUrl,
-              caseId,
-            });
-          } else if (channel === "SMS" || channel === "WHATSAPP") {
-            await sendSms({
-              to: revenueCase.customer.phone || revenueCase.customer.email,
-              customerName: revenueCase.customer.name,
-              customerEmail: revenueCase.customer.email,
-              amountAtRisk: revenueCase.amountAtRisk.toString(),
-              currency: revenueCase.currency,
-              paymentLink: shortUrl,
-              caseId,
-              channel: channel as "SMS" | "WHATSAPP",
-            });
+          // Concurrently dispatch BOTH Email AND WhatsApp by default
+          const outreachTasks: Promise<any>[] = [];
+
+          if (revenueCase.customer.email) {
+            outreachTasks.push(
+              sendRecoveryEmail({
+                to: revenueCase.customer.email,
+                customerName: revenueCase.customer.name,
+                amountAtRisk: revenueCase.amountAtRisk.toString(),
+                currency: revenueCase.currency,
+                paymentLink: shortUrl,
+                caseId,
+              }).catch((err) => console.warn("[Outreach:Email] Warning:", err.message))
+            );
           }
-          metadata = { channel_used: channel, payment_link_url: shortUrl };
+
+          if (revenueCase.customer.phone || revenueCase.customer.email) {
+            outreachTasks.push(
+              sendSms({
+                to: revenueCase.customer.phone || revenueCase.customer.email,
+                customerName: revenueCase.customer.name,
+                customerEmail: revenueCase.customer.email,
+                amountAtRisk: revenueCase.amountAtRisk.toString(),
+                currency: revenueCase.currency,
+                paymentLink: shortUrl,
+                caseId,
+                channel: "WHATSAPP",
+              }).catch((err) => console.warn("[Outreach:WhatsApp] Warning:", err.message))
+            );
+          }
+
+          await Promise.all(outreachTasks);
+
+          metadata = {
+            channels_used: ["EMAIL", "WHATSAPP"],
+            payment_link_url: shortUrl,
+          };
           shouldIncrementAttempts = true;
           break;
         }
@@ -482,7 +467,7 @@ Respond with action, channel, and 1 short sentence reasoning.
             action: "execution",
             fromStatus: CaseStatus.INTERVENING,
             toStatus: newStatus,
-            reasoning: overrideReason ?? `Executed action: ${actionToExecute} via ${intervention.channel}`,
+            reasoning: overrideReason ?? `Executed recovery outreach via EMAIL & WHATSAPP with live payment link`,
             metadata: { action: actionToExecute, ...metadata } as any,
           },
         }),
@@ -554,7 +539,7 @@ Respond with action, channel, and 1 short sentence reasoning.
         break;
       }
 
-      // 4. Send follow-up reminder
+      // 4. Send follow-up reminder via BOTH Email & WhatsApp
       await step.run(`send-followup-attempt-${retryResult.attemptNumber}`, async () => {
         const caseRecord = await prisma.revenueCase.findUnique({
           where: { id: caseId },
@@ -577,27 +562,37 @@ Respond with action, channel, and 1 short sentence reasoning.
           description: followupDesc,
         });
 
-        if (caseRecord.customer.phone) {
-          await sendSms({
-            to: caseRecord.customer.phone,
-            customerName: caseRecord.customer.name,
-            customerEmail: caseRecord.customer.email,
-            amountAtRisk: caseRecord.amountAtRisk.toString(),
-            currency: caseRecord.currency,
-            paymentLink: shortUrl,
-            caseId,
-            channel: "WHATSAPP",
-          });
-        } else {
-          await sendRecoveryEmail({
-            to: caseRecord.customer.email,
-            customerName: caseRecord.customer.name,
-            amountAtRisk: caseRecord.amountAtRisk.toString(),
-            currency: caseRecord.currency,
-            paymentLink: shortUrl,
-            caseId,
-          });
+        const followupTasks: Promise<any>[] = [];
+
+        if (caseRecord.customer.email) {
+          followupTasks.push(
+            sendRecoveryEmail({
+              to: caseRecord.customer.email,
+              customerName: caseRecord.customer.name,
+              amountAtRisk: caseRecord.amountAtRisk.toString(),
+              currency: caseRecord.currency,
+              paymentLink: shortUrl,
+              caseId,
+            }).catch((err) => console.warn("[Followup:Email] Warning:", err.message))
+          );
         }
+
+        if (caseRecord.customer.phone || caseRecord.customer.email) {
+          followupTasks.push(
+            sendSms({
+              to: caseRecord.customer.phone || caseRecord.customer.email,
+              customerName: caseRecord.customer.name,
+              customerEmail: caseRecord.customer.email,
+              amountAtRisk: caseRecord.amountAtRisk.toString(),
+              currency: caseRecord.currency,
+              paymentLink: shortUrl,
+              caseId,
+              channel: "WHATSAPP",
+            }).catch((err) => console.warn("[Followup:WhatsApp] Warning:", err.message))
+          );
+        }
+
+        await Promise.all(followupTasks);
 
         await prisma.$transaction([
           prisma.revenueCase.update({
@@ -609,7 +604,7 @@ Respond with action, channel, and 1 short sentence reasoning.
               caseId,
               actor: "system:inngest-followup",
               action: "execution",
-              reasoning: `Follow-up reminder sent (Attempt ${retryResult.attemptNumber}/${caseRecord.maxAttempts})`,
+              reasoning: `Follow-up reminder sent via EMAIL & WHATSAPP (Attempt ${retryResult.attemptNumber}/${caseRecord.maxAttempts})`,
               metadata: { attempt: retryResult.attemptNumber, payment_link_url: shortUrl },
             },
           }),
