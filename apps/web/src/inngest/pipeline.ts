@@ -355,21 +355,7 @@ Respond with action, channel, and 1 short sentence reasoning.
       let shouldIncrementAttempts = false;
 
       switch (actionToExecute) {
-        case "retry_payment": {
-          const orderId = await retryPayment({
-            caseId,
-            attemptNumber: revenueCase.attemptsUsed,
-            amountPaise: Math.round(Number(revenueCase.amountAtRisk) * 100),
-            currency: revenueCase.currency,
-            customerEmail: revenueCase.customer.email,
-            customerPhone: revenueCase.customer.phone,
-            sourceRef: revenueCase.sourceRef,
-          });
-          metadata = { razorpay_order_id: orderId };
-          shouldIncrementAttempts = true;
-          break;
-        }
-
+        case "retry_payment":
         case "send_payment_link":
         case "send_reminder": {
           const itemDescription =
@@ -386,6 +372,23 @@ Respond with action, channel, and 1 short sentence reasoning.
             customerPhone: revenueCase.customer.phone,
             description: itemDescription,
           });
+
+          let orderId: string | null = null;
+          if (actionToExecute === "retry_payment") {
+            try {
+              orderId = await retryPayment({
+                caseId,
+                attemptNumber: revenueCase.attemptsUsed,
+                amountPaise: Math.round(Number(revenueCase.amountAtRisk) * 100),
+                currency: revenueCase.currency,
+                customerEmail: revenueCase.customer.email,
+                customerPhone: revenueCase.customer.phone,
+                sourceRef: revenueCase.sourceRef,
+              });
+            } catch (err: any) {
+              console.warn("[Razorpay:Retry] Order retry warning:", err.message);
+            }
+          }
 
           // Concurrently dispatch BOTH Email AND WhatsApp by default
           const outreachTasks: Promise<any>[] = [];
@@ -421,6 +424,7 @@ Respond with action, channel, and 1 short sentence reasoning.
           await Promise.all(outreachTasks);
 
           metadata = {
+            ...(orderId ? { razorpay_order_id: orderId } : {}),
             channels_used: ["EMAIL", "WHATSAPP"],
             payment_link_url: shortUrl,
           };
