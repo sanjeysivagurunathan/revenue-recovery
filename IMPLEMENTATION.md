@@ -69,8 +69,8 @@ Revenue leaks through four channels, and this build treats all four as instances
 |---|---|---|
 | Frontend | **Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui** | Required by brief; App Router gives server components for the dashboard without a separate BFF |
 | API | **Next.js Route Handlers** for CRUD/reads; **standalone Node/TypeScript worker service** for the agent loop | Keeps request-scoped work fast; keeps long-running agent work off the web tier |
-| Agent orchestration | **Claude API (Sonnet)** via `@anthropic-ai/sdk`, orchestrated as an explicit state machine (not a black-box agent loop) | Track requires *bounded* workflows with stopping rules — an explicit graph is auditable; a free-roaming agent loop is not |
-| Queue / scheduling | **BullMQ + Redis** | Retry backoff, delayed jobs (dunning cadences, promise-to-pay follow-ups), and durable job history for the audit trail |
+| Agent orchestration | **Groq (GPT-OSS-120B) / Claude Sonnet** with structured JSON tool-calling, orchestrated as an explicit Inngest durable state machine | Track requires *bounded* workflows with stopping rules — an explicit graph is auditable; a free-roaming agent loop is not |
+| Queue / background jobs | **Inngest** (`inngest`) | Serverless durable workflows, step-level replays, built-in delays (`step.sleep`), automatic backoff, and local visual execution dashboard |
 | Database | **PostgreSQL + Prisma ORM** | Strong relational fit for cases/events/interventions/audit trail; Prisma gives type-safe queries shared between web and worker |
 | Payments | **Razorpay (test mode)**: Orders API, Payment Links, Subscriptions (recurring/mandates via UPI Autopay & e-NACH), Webhooks | This is a Razorpay Buildathon — Razorpay is the payments rail end-to-end: order creation, checkout, retries, subscription dunning, and payment links for receivables all come from one Razorpay integration |
 | Receivables / invoicing | **Razorpay Invoices API + Payment Links** for B2B chaser flows | Native Razorpay support for generating and tracking payable links against overdue amounts |

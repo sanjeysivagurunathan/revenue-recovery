@@ -1,10 +1,40 @@
-Open Docker Desktop
-Start PostgreSQL & Redis :docker-compose up -d
-Push the Database Schema & Generate Prisma Client:npm run db:push
-Seed the Demo Data:npx tsx seed/synthetic-cases.ts
-Start the Development Server:npm run dev
-Start the Tunnel (in new terminal): ngrok http 3000
-ngrok Dashboard: https://dashboard.ngrok.com/get-started/your-authtoken
-Current ngrok URL: https://agreeable-level-puppy.ngrok-free.dev
-Razorpay Webhook URL: https://agreeable-level-puppy.ngrok-free.dev/api/webhooks/razorpay
-Razorpay Webhook Secret: Sanjey@45
+=======================================================
+🚀 REVENUE RECOVERY AGENT — QUICK START GUIDE
+=======================================================
+
+1. Make sure Docker Desktop is OPEN and RUNNING.
+
+2. Start PostgreSQL & Redis Containers:
+   docker-compose up -d
+
+3. Sync Database Schema & Generate Prisma Client:
+   npm run db:push
+
+4. (Optional) Seed Synthetic Demo Data:
+   npx tsx seed/synthetic-cases.ts
+
+5. Start the Web App & Background Workers:
+   npm run dev
+
+6. Start ngrok Tunnel (Open a separate terminal window):
+   ngrok http 3000
+
+7. Update Razorpay Webhook (In Razorpay Dashboard Settings -> Webhooks):
+   - Webhook URL: https://<your-ngrok-subdomain>.ngrok-free.dev/api/webhooks/razorpay
+   - Secret: Sanjey@45
+   - Active Events: payment.failed, order.paid, payment_link.paid
+
+8. (Optional) Open Inngest Visual Dev UI:
+   npm run inngest:dev
+   - Opens local visual execution trace dashboard at: http://localhost:8288
+
+=======================================================
+⚡ TESTING & DEMO COMMANDS
+=======================================================
+
+- Inject a live failed payment (Triggers AI Outreach):
+  npx tsx scripts/test-webhook.ts --email kopykatqueryonline@gmail.com --error card_blocked
+
+- Simulate instant payment recovery for a case:
+  npx tsx scripts/test-payment-success.ts --caseId <case_id>
+

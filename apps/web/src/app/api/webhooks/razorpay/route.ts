@@ -10,7 +10,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { getDetectQueue } from "@/lib/queues";
+import { inngest } from "@/inngest/client";
 import { type RazorpayWebhookPayload, LeakType } from "@revenue-recovery/types";
 import { prisma, CaseStatus } from "@revenue-recovery/db";
 
@@ -43,7 +43,7 @@ function mapEventToLeakType(event: string): string | null {
 
 /**
  * Handle a successful payment event — mark the linked case as RECOVERED.
- * Razorpay fires: order.paid, payment.captured, payment_link.paid, payment.authorized
+ * Razorpay fires: order.paid, payment.captured, payment_link.paid
  */
 async function handlePaymentSuccess(payload: any): Promise<void> {
   const payment = payload.payload?.payment?.entity;
@@ -151,16 +151,13 @@ export async function POST(req: NextRequest) {
   console.log("[Webhook] Razorpay event received:", event);
 
   /* ── 4a. Handle SUCCESS events → mark case as RECOVERED ── */
-  // Note: We only handle order.paid and payment_link.paid — NOT payment.authorized.
-  // Razorpay fires payment.authorized before order.paid for the same transaction.
-  // Acting on both would create duplicate RECOVERED audit entries.
   const successEvents = ["order.paid", "payment.captured", "payment_link.paid"];
   if (successEvents.includes(event)) {
     await handlePaymentSuccess(payload);
     return NextResponse.json({ received: true });
   }
 
-  /* ── 4b. Handle FAILURE events → enqueue detect job ── */
+  /* ── 4b. Handle FAILURE events → send Inngest event ── */
   const leakType = mapEventToLeakType(event);
 
   let sourceRef = "";
@@ -173,13 +170,16 @@ export async function POST(req: NextRequest) {
   }
 
   if (leakType && sourceRef) {
-    await getDetectQueue().add("webhook", {
-      sourceRef,
-      leakType,
-      rawPayload: payload,
-      receivedAt: new Date().toISOString(),
+    await inngest.send({
+      name: "revenue/leak.detected",
+      data: {
+        sourceRef,
+        leakType,
+        rawPayload: payload,
+        receivedAt: new Date().toISOString(),
+      },
     });
-    console.log(`[Webhook] Enqueued case:detect job for ${sourceRef}`);
+    console.log(`[Webhook] Dispatched revenue/leak.detected Inngest event for ${sourceRef}`);
   } else {
     console.log(`[Webhook] Unmapped event type: ${event} or missing sourceRef`);
   }

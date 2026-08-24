@@ -21,7 +21,7 @@ export interface EmailPayload {
   customerName: string;
   amountAtRisk: string;
   currency: string;
-  paymentLink?: string;
+  paymentLink?: string | undefined;
   caseId: string;
 }
 

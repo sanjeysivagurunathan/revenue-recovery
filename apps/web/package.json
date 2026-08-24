@@ -5,12 +5,14 @@
   "description": "Revenue Recovery Dashboard — Next.js 15 App Router",
   "scripts": {
     "dev": "next dev --turbopack",
+    "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.55.1",
     "@revenue-recovery/db": "*",
     "@revenue-recovery/types": "*",
     "axios": "^1.10.0",
@@ -19,6 +21,8 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "groq-sdk": "^1.5.0",
+    "inngest": "^4.18.1",
     "ioredis": "^5.11.1",
     "lucide-react": "^0.525.0",
     "next": "^15.4.3",
@@ -27,7 +31,9 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "recharts": "^2.15.4",
-    "tailwind-merge": "^3.3.1"
+    "resend": "^4.8.0",
+    "tailwind-merge": "^3.3.1",
+    "twilio": "^5.13.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.11",
