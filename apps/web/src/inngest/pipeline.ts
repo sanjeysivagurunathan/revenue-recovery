@@ -210,7 +210,16 @@ ${JSON.stringify(
   2
 )}
 
-Identify the root cause from allowed enum values (e.g. upi_mandate_failed, insufficient_funds, card_expired, bank_decline_soft, unknown). Keep reasoning to 1 short sentence. Provide confidence and recommended urgency.
+Identify the root cause from allowed enum values:
+- "bank_decline_hard": permanently blocked card, stolen/lost card, or permanent hard decline (do not retry)
+- "bank_decline_soft": temporary issuer downtime or network error (retry-able)
+- "insufficient_funds": customer account balance low
+- "upi_mandate_failed": recurring UPI Autopay mandate failure
+- "card_expired": expired debit/credit card
+- "genuine_dispute": customer chargeback or dispute opened
+- "unknown": unrecognized error
+
+Keep reasoning to 1 short sentence. Provide confidence and recommended urgency.
 `;
 
       const diagOutput = await generateDiagnosis(prompt);
