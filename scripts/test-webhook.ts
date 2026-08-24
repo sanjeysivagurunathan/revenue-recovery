@@ -25,12 +25,16 @@ async function simulateWebhook() {
   const leakTypeArg = typeIndex !== -1 ? args[typeIndex + 1]?.toLowerCase() : "payment";
   const isSubscription = leakTypeArg === "subscription" || leakTypeArg === "subscription_failure";
   const isCheckout = leakTypeArg === "checkout" || leakTypeArg === "checkout_abandonment";
+  const isInvoice = leakTypeArg === "invoice" || leakTypeArg === "receivable" || leakTypeArg === "receivable_overdue";
 
   const paymentIndex = args.indexOf("--paymentId");
   const paymentId = paymentIndex !== -1 ? args[paymentIndex + 1] : `pay_${Math.random().toString(36).substring(2, 12)}`;
 
   const subIndex = args.indexOf("--subId");
   const subId = subIndex !== -1 ? args[subIndex + 1] : `sub_${Math.random().toString(36).substring(2, 12)}`;
+
+  const invIndex = args.indexOf("--invId");
+  const invId = invIndex !== -1 ? args[invIndex + 1] : `inv_${Math.random().toString(36).substring(2, 12)}`;
 
   const orderId = `order_${Math.random().toString(36).substring(2, 12)}`;
 
@@ -41,11 +45,12 @@ async function simulateWebhook() {
   const targetPhone = phoneIndex !== -1 ? args[phoneIndex + 1] : process.env["TEST_PHONE"] || "+919790317406";
 
   const amountIndex = args.indexOf("--amount");
-  const amountPaise = amountIndex !== -1 ? parseInt(args[amountIndex + 1]) * 100 : 299900; // Default INR 2999
+  const defaultAmount = isInvoice ? 1500000 : 299900; // Default ₹15,000 for B2B invoice, ₹2,999 for B2C
+  const amountPaise = amountIndex !== -1 ? parseInt(args[amountIndex + 1]) * 100 : defaultAmount;
 
   const errorIndex = args.indexOf("--error");
   const errorCode = errorIndex !== -1 ? args[errorIndex + 1] : (
-    isSubscription ? "upi_mandate_failed" : isCheckout ? "cart_price_shock" : "insufficient_funds"
+    isSubscription ? "upi_mandate_failed" : isCheckout ? "cart_price_shock" : isInvoice ? "invoice_dispute" : "insufficient_funds"
   );
 
   let errorDesc = "Payment was declined by the bank due to insufficient funds in customer account.";
@@ -61,6 +66,10 @@ async function simulateWebhook() {
     errorDesc = "Customer abandoned cart after unexpected shipping fee was added at checkout.";
   } else if (errorCode === "payment_method_missing") {
     errorDesc = "Customer attempted checkout but had no saved payment method (card/UPI) available.";
+  } else if (errorCode === "invoice_dispute") {
+    errorDesc = "B2B client has raised a billing dispute regarding deliverables and requested revised invoice.";
+  } else if (errorCode === "overdue_net30" || errorCode === "insufficient_funds") {
+    errorDesc = "B2B Net-30 invoice is past due; corporate accounts payable team requests delayed settlement terms.";
   }
 
   let payload: any;
@@ -157,6 +166,50 @@ async function simulateWebhook() {
       },
       created_at: Math.floor(Date.now() / 1000),
     };
+  } else if (isInvoice) {
+    const invNumber = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
+    payload = {
+      entity: "event",
+      account_id: "acc_mock123",
+      event: "invoice.past_due",
+      contains: ["invoice"],
+      payload: {
+        invoice: {
+          entity: {
+            id: invId,
+            entity: "invoice",
+            invoice_number: invNumber,
+            customer_id: `cust_${invId.slice(-8)}`,
+            customer_details: {
+              name: "Acme Corp (Attn: Sanjey)",
+              email: targetEmail,
+              contact: targetPhone,
+            },
+            order_id: `order_${Math.random().toString(36).substring(2, 10)}`,
+            amount: amountPaise,
+            amount_paid: 0,
+            amount_due: amountPaise,
+            currency: "INR",
+            status: "past_due",
+            type: "invoice",
+            date: Math.floor(Date.now() / 1000) - 86400 * 30, // Issued 30 days ago
+            due_date: Math.floor(Date.now() / 1000) - 86400 * 5, // Due 5 days ago
+            notes: {
+              customer_name: "Acme Corp (Attn: Sanjey)",
+              email: targetEmail,
+              phone: targetPhone,
+              project: "Enterprise SaaS License Q3",
+              dispute_reason: errorCode,
+            },
+            created_at: Math.floor(Date.now() / 1000) - 86400 * 30,
+          },
+        },
+      },
+      created_at: Math.floor(Date.now() / 1000),
+      email: targetEmail,
+      name: "Acme Corp (Attn: Sanjey)",
+      phone: targetPhone,
+    };
   } else {
     payload = {
       entity: "event",
@@ -201,8 +254,14 @@ async function simulateWebhook() {
   }
 
   const bodyString = JSON.stringify(payload);
-  const leakTypeLabel = isCheckout ? "CHECKOUT_ABANDONMENT" : isSubscription ? "SUBSCRIPTION_FAILURE" : "PAYMENT_DEGRADATION";
-  const refId = isCheckout ? orderId : isSubscription ? subId : paymentId;
+  const leakTypeLabel = isCheckout
+    ? "CHECKOUT_ABANDONMENT"
+    : isInvoice
+    ? "RECEIVABLE_OVERDUE"
+    : isSubscription
+    ? "SUBSCRIPTION_FAILURE"
+    : "PAYMENT_DEGRADATION";
+  const refId = isCheckout ? orderId : isInvoice ? invId : isSubscription ? subId : paymentId;
 
   // For CHECKOUT_ABANDONMENT: bypass the webhook (no signature needed) and inject directly into Inngest
   if (isCheckout) {

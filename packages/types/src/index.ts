@@ -222,7 +222,34 @@ export interface RazorpayWebhookPayload {
     subscription?: {
       entity: RazorpaySubscriptionEntity;
     };
+    invoice?: {
+      entity: RazorpayInvoiceEntity;
+    };
   };
+  created_at: number;
+}
+
+export interface RazorpayInvoiceEntity {
+  id: string;
+  entity: "invoice";
+  invoice_number?: string;
+  customer_id?: string;
+  customer_details?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+  order_id?: string | null;
+  subscription_id?: string | null;
+  amount: number;
+  amount_paid: number;
+  amount_due: number;
+  currency: string;
+  status: string;
+  type?: string;
+  date?: number;
+  due_date?: number | null;
+  notes?: Record<string, string>;
   created_at: number;
 }
 

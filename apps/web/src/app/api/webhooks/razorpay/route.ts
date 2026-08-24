@@ -45,6 +45,13 @@ function mapEventToLeakType(event: string): string | null {
   ) {
     return LeakType.SUBSCRIPTION_FAILURE;
   }
+  if (
+    event.startsWith("invoice.past_due") ||
+    event.startsWith("invoice.expired") ||
+    event.startsWith("invoice.unpaid")
+  ) {
+    return LeakType.RECEIVABLE_OVERDUE;
+  }
   return null;
 }
 
@@ -227,6 +234,7 @@ export async function POST(req: NextRequest) {
     "payment_link.paid",
     "subscription.charged",
     "subscription.activated",
+    "invoice.paid",
   ];
   if (successEvents.includes(event)) {
     await handlePaymentSuccess(payload);
@@ -239,6 +247,8 @@ export async function POST(req: NextRequest) {
   let sourceRef = "";
   if (payload.payload.subscription) {
     sourceRef = payload.payload.subscription.entity.id;
+  } else if (payload.payload.invoice) {
+    sourceRef = payload.payload.invoice.entity.id;
   } else if (payload.payload.payment) {
     sourceRef = payload.payload.payment.entity.id;
   } else if (payload.payload.order) {

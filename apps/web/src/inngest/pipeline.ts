@@ -48,10 +48,13 @@ export const recoveryPipelineFunction = inngest.createFunction(
       const paymentEntity = rawPayload.payload?.payment?.entity;
       const orderEntity = rawPayload.payload?.order?.entity;
       const subEntity = rawPayload.payload?.subscription?.entity;
+      const invoiceEntity = rawPayload.payload?.invoice?.entity;
 
-      // CHECKOUT_ABANDONMENT: order.abandoned event — customer data from order notes or rawPayload override
+      // CHECKOUT_ABANDONMENT, SUBSCRIPTION_FAILURE, RECEIVABLE_OVERDUE customer data extraction
       const customerEmail =
         paymentEntity?.email ||
+        invoiceEntity?.customer_details?.email ||
+        invoiceEntity?.notes?.email ||
         orderEntity?.notes?.email ||
         orderEntity?.notes?.customer_email ||
         subEntity?.notes?.email ||
@@ -61,6 +64,9 @@ export const recoveryPipelineFunction = inngest.createFunction(
 
       const customerPhone =
         paymentEntity?.contact ||
+        invoiceEntity?.customer_details?.contact ||
+        invoiceEntity?.notes?.phone ||
+        invoiceEntity?.notes?.contact ||
         orderEntity?.notes?.phone ||
         orderEntity?.notes?.contact ||
         subEntity?.notes?.contact ||
@@ -70,6 +76,9 @@ export const recoveryPipelineFunction = inngest.createFunction(
         null;
 
       const customerName =
+        invoiceEntity?.customer_details?.name ||
+        invoiceEntity?.notes?.customer_name ||
+        invoiceEntity?.notes?.name ||
         orderEntity?.notes?.name ||
         orderEntity?.notes?.customer_name ||
         subEntity?.notes?.customer_name ||
@@ -81,13 +90,20 @@ export const recoveryPipelineFunction = inngest.createFunction(
 
       const amountPaise =
         paymentEntity?.amount ||
+        invoiceEntity?.amount_due ||
+        invoiceEntity?.amount ||
         orderEntity?.amount ||
         subEntity?.current_billing_amount ||
         (subEntity?.plan?.item?.amount ? subEntity.plan.item.amount : 0) ||
         199900;
 
       const amountAtRisk = amountPaise / 100;
-      const currency = paymentEntity?.currency || orderEntity?.currency || subEntity?.currency || "INR";
+      const currency =
+        paymentEntity?.currency ||
+        invoiceEntity?.currency ||
+        orderEntity?.currency ||
+        subEntity?.currency ||
+        "INR";
 
       // 1. Find or create Customer
       let customer = await prisma.customer.findFirst({
@@ -184,6 +200,7 @@ export const recoveryPipelineFunction = inngest.createFunction(
       if (!revenueCase) throw new Error(`Case ${caseId} not found`);
 
       const isAbandonment = revenueCase.leakType === LeakType.CHECKOUT_ABANDONMENT;
+      const isReceivable = revenueCase.leakType === LeakType.RECEIVABLE_OVERDUE;
 
       const prompt = isAbandonment
         ? `
@@ -215,6 +232,39 @@ Identify the root cause from allowed enum values SPECIFIC TO CHECKOUT ABANDONMEN
 - "payment_method_missing": customer had no saved card/UPI at checkout
 - "bank_decline_soft": customer attempted payment but it was temporarily declined
 - "unknown": reason unclear from available data
+
+Keep reasoning to 1 short sentence. Provide confidence and recommended urgency.
+`
+        : isReceivable
+        ? `
+You are diagnosing an overdue B2B invoice (RECEIVABLE_OVERDUE) to determine why the client has not settled payment. Be concise — max 1 sentence for reasoning.
+
+Amount Overdue: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
+Leak Type: RECEIVABLE_OVERDUE
+
+Invoice details:
+${JSON.stringify(
+  revenueCase.events.map((e) => {
+    const inv = (e.payload as any)?.payload?.invoice?.entity;
+    return {
+      event_type: e.type,
+      invoice_id: inv?.id,
+      invoice_number: inv?.invoice_number,
+      status: inv?.status,
+      due_date: inv?.due_date,
+      amount_due: inv?.amount_due,
+      notes: inv?.notes,
+    };
+  }),
+  null,
+  2
+)}
+
+Identify the root cause from allowed enum values:
+- "invoice_dispute": client has contested invoice deliverables, line items, or pricing terms
+- "insufficient_funds": client liquidity/cashflow constraint, requests delayed settlement
+- "bank_decline_soft": temporary vendor payment portal or NEFT/RTGS banking issue
+- "unknown": general overdue reminder needed
 
 Keep reasoning to 1 short sentence. Provide confidence and recommended urgency.
 `
@@ -321,6 +371,7 @@ Keep reasoning to 1 short sentence. Provide confidence and recommended urgency.
       ];
 
       const isAbandonment = revenueCase.leakType === LeakType.CHECKOUT_ABANDONMENT;
+      const isReceivable = revenueCase.leakType === LeakType.RECEIVABLE_OVERDUE;
 
       const prompt = isAbandonment
         ? `
@@ -341,6 +392,26 @@ Constraints (no exceptions):
 - If root_cause is "payment_method_missing", choose "send_payment_link" to give them a direct Razorpay-hosted checkout link.
 - If root_cause is "shipping_cost_surprise", choose "send_reminder" via "EMAIL" with payment link.
 - Do NOT choose "retry_payment" for abandonment — there was no failed charge, only an incomplete checkout.
+
+Respond with action, channel, and 1 short sentence reasoning.
+`
+        : isReceivable
+        ? `
+Decide the best B2B receivables collection action for an overdue invoice. Be concise — max 1 sentence for reasoning.
+
+Invoice Dues Overdue: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
+Leak Type: RECEIVABLE_OVERDUE
+Previous Follow-up Attempts: ${revenueCase.attemptsUsed} / ${revenueCase.maxAttempts}
+Diagnosed Root Cause: ${revenueCase.rootCause}
+Urgency: ${diagnosis.recommended_urgency}
+
+Constraints (no exceptions):
+- Allowed Actions: ${allowedActions.join(", ")}
+- Allowed Channels: ${allowedChannels.join(", ")}
+- If root_cause is "invoice_dispute", MUST choose "escalate_human" + "HUMAN_HANDOFF" to resolve disputed billing terms with account management.
+- If root_cause is "insufficient_funds" or temporary cashflow constraint, prefer "offer_promise_to_pay" via "EMAIL" so the corporate client can commit to a scheduled settlement date.
+- Otherwise prefer "send_payment_link" via "EMAIL" (corporate default) or "WHATSAPP".
+- Do NOT choose "retry_payment" for B2B invoices — auto-charging corporate accounts without consent is non-compliant.
 
 Respond with action, channel, and 1 short sentence reasoning.
 `
@@ -433,12 +504,15 @@ Respond with action, channel, and 1 short sentence reasoning.
       switch (actionToExecute) {
         case "retry_payment":
         case "send_payment_link":
+        case "offer_promise_to_pay":
         case "send_reminder": {
           const itemDescription =
             revenueCase.leakType === LeakType.SUBSCRIPTION_FAILURE
               ? `Subscription renewal dues (case ${caseId})`
               : revenueCase.leakType === LeakType.CHECKOUT_ABANDONMENT
               ? `Complete your checkout — your cart is waiting! (case ${caseId})`
+              : revenueCase.leakType === LeakType.RECEIVABLE_OVERDUE
+              ? `Settlement for overdue B2B invoice (case ${caseId})`
               : `Payment reminder (case ${caseId})`;
 
           const shortUrl = await createPaymentLink({
@@ -677,6 +751,8 @@ Respond with action, channel, and 1 short sentence reasoning.
             ? `Subscription renewal attempt ${retryResult.attemptNumber} (case ${caseId})`
             : caseRecord.leakType === LeakType.CHECKOUT_ABANDONMENT
             ? `Your cart is still waiting — complete checkout (attempt ${retryResult.attemptNumber}) (case ${caseId})`
+            : caseRecord.leakType === LeakType.RECEIVABLE_OVERDUE
+            ? `Overdue B2B invoice reminder attempt ${retryResult.attemptNumber} (case ${caseId})`
             : `Payment reminder attempt ${retryResult.attemptNumber} (case ${caseId})`;
 
         const shortUrl = await createPaymentLink({
