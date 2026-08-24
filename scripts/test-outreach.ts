@@ -11,9 +11,9 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { sendRecoveryEmail } from "../apps/worker/src/adapters/email.adapter.js";
-import { sendSms } from "../apps/worker/src/adapters/sms.adapter.js";
-import { createPaymentLink } from "../apps/worker/src/adapters/razorpay.adapter.js";
+import { sendRecoveryEmail } from "../apps/web/src/inngest/adapters/email";
+import { sendSms } from "../apps/web/src/inngest/adapters/sms";
+import { createPaymentLink } from "../apps/web/src/inngest/adapters/razorpay";
 
 async function runTest() {
   const args = process.argv.slice(2);

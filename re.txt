@@ -28,6 +28,11 @@
    npm run inngest:dev
    - Opens local visual execution trace dashboard at: http://localhost:8288
 
+9.You can reset the database to a completely clean slate with a single command:
+
+bash
+npm run db:clear
+
 =======================================================
 ⚡ TESTING & DEMO COMMANDS (ALL 4 LEAK TYPES)
 =======================================================
