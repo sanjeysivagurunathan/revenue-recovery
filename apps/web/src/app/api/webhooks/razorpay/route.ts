@@ -119,7 +119,13 @@ async function handlePaymentSuccess(payload: any): Promise<void> {
     }),
   ]);
 
-  console.log(`[Webhook] ✅ Case ${matchedCaseId} marked as RECOVERED — INR ${amountRecovered} recovered`);
+  // Wake up Inngest waiting workflow immediately
+  await inngest.send({
+    name: "revenue/case.recovered",
+    data: { caseId: matchedCaseId, amountRecovered },
+  });
+
+  console.log(`[Webhook] ✅ Case ${matchedCaseId} marked as RECOVERED & Inngest notified — INR ${amountRecovered} recovered`);
 }
 
 export async function POST(req: NextRequest) {

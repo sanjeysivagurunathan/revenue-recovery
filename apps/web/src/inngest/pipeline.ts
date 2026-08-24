@@ -2,6 +2,14 @@
  * apps/web/src/inngest/pipeline.ts
  *
  * Full multi-stage autonomous Revenue Recovery Agent pipeline as an Inngest durable function.
+ *
+ * Flow:
+ *  Step 1: detect-and-record     — Ingests webhook, deduplicates, creates Customer + RevenueCase + Audit
+ *  Step 2: diagnose-root-cause   — Pure LLM diagnosis (Groq / Claude) with structured schema
+ *  Step 3: decide-recovery-action — Pure LLM decision selecting optimal action & channel
+ *  Step 4: execute-action        — Deterministic execution with guardrails, Razorpay & outreach
+ *  Step 5: wait-for-payment      — Durable wait for customer payment (or retry cadence timeout)
+ *  Step 6: follow-up / escalate  — Retries outreach if unpaid or stops/escalates
  */
 
 import { inngest } from "./client";
@@ -11,6 +19,13 @@ import { runGuardrails } from "./adapters/guardrails";
 import { sendRecoveryEmail } from "./adapters/email";
 import { sendSms } from "./adapters/sms";
 import { retryPayment, createPaymentLink } from "./adapters/razorpay";
+
+const TERMINAL_STATUSES: CaseStatus[] = [
+  CaseStatus.ESCALATED,
+  CaseStatus.STOPPED,
+  CaseStatus.RECOVERED,
+  CaseStatus.FAILED,
+];
 
 export const recoveryPipelineFunction = inngest.createFunction(
   {
@@ -444,30 +459,43 @@ Respond with action, channel, and 1 short sentence reasoning.
       return { actionToExecute, newStatus, metadata };
     });
 
-    /* ── STEP 5: VERIFICATION CADENCE (DURABLE SLEEP) ──────────────────── */
-    const terminalStatuses: CaseStatus[] = [
-      CaseStatus.ESCALATED,
-      CaseStatus.STOPPED,
-      CaseStatus.RECOVERED,
-      CaseStatus.FAILED,
-    ];
+    /* ── STEP 5: WAIT FOR PAYMENT OR RETRY CADENCE ─────────────────────── */
+    while (true) {
+      // 1. Check if case is already terminal
+      const currentCheck = await prisma.revenueCase.findUnique({ where: { id: caseId } });
+      if (!currentCheck || TERMINAL_STATUSES.includes(currentCheck.status as CaseStatus)) {
+        break;
+      }
 
-    if (!terminalStatuses.includes(execution.newStatus as CaseStatus)) {
-      await step.sleep("wait-for-verification", "1h");
+      // 2. Wait for incoming payment event (or timeout after dunning cadence, e.g. 1h)
+      const paymentEvent = await step.waitForEvent("wait-for-customer-payment", {
+        event: "revenue/case.recovered",
+        timeout: "1h",
+        match: "data.caseId",
+      });
 
-      await step.run("verify-recovery-status", async () => {
-        console.log(`[Inngest:VERIFY] Verifying recovery status for case ${caseId}`);
+      if (paymentEvent) {
+        // Customer paid! Complete the workflow immediately
+        await step.run("payment-confirmed-complete", async () => {
+          console.log(`[Inngest:SUCCESS] Case ${caseId} payment confirmed via event!`);
+          return { status: "RECOVERED", recoveredAt: new Date().toISOString() };
+        });
+        break;
+      }
 
-        const currentCase = await prisma.revenueCase.findUnique({
+      // 3. Customer did NOT pay during timeout window — verify and send next attempt if allowed
+      const retryResult = await step.run("verify-and-followup", async () => {
+        const caseRecord = await prisma.revenueCase.findUnique({
           where: { id: caseId },
+          include: { customer: true, events: true },
         });
 
-        if (!currentCase) return;
+        if (!caseRecord || TERMINAL_STATUSES.includes(caseRecord.status as CaseStatus)) {
+          return { shouldStop: true };
+        }
 
-        if (
-          currentCase.status === CaseStatus.INTERVENING &&
-          currentCase.attemptsUsed >= currentCase.maxAttempts
-        ) {
+        // If attempts exhausted -> escalate to human review
+        if (caseRecord.attemptsUsed >= caseRecord.maxAttempts) {
           await prisma.$transaction([
             prisma.revenueCase.update({
               where: { id: caseId },
@@ -480,11 +508,75 @@ Respond with action, channel, and 1 short sentence reasoning.
                 action: "state_transition",
                 fromStatus: CaseStatus.INTERVENING,
                 toStatus: CaseStatus.ESCALATED,
-                reasoning: `Verification failed: case not recovered after ${currentCase.attemptsUsed} attempts. Auto-escalated to human review.`,
+                reasoning: `Max attempts (${caseRecord.maxAttempts}) reached without payment. Escalated to human review.`,
               },
             }),
           ]);
+          return { shouldStop: true, escalated: true };
         }
+
+        return { shouldStop: false, attemptNumber: caseRecord.attemptsUsed + 1 };
+      });
+
+      if (retryResult.shouldStop) {
+        break;
+      }
+
+      // 4. Send follow-up reminder
+      await step.run(`send-followup-attempt-${retryResult.attemptNumber}`, async () => {
+        const caseRecord = await prisma.revenueCase.findUnique({
+          where: { id: caseId },
+          include: { customer: true },
+        });
+        if (!caseRecord) return;
+
+        const shortUrl = await createPaymentLink({
+          caseId,
+          amountPaise: Math.round(Number(caseRecord.amountAtRisk) * 100),
+          currency: caseRecord.currency,
+          customerName: caseRecord.customer.name,
+          customerEmail: caseRecord.customer.email,
+          customerPhone: caseRecord.customer.phone,
+          description: `Payment reminder attempt ${retryResult.attemptNumber} (case ${caseId})`,
+        });
+
+        if (caseRecord.customer.phone) {
+          await sendSms({
+            to: caseRecord.customer.phone,
+            customerName: caseRecord.customer.name,
+            customerEmail: caseRecord.customer.email,
+            amountAtRisk: caseRecord.amountAtRisk.toString(),
+            currency: caseRecord.currency,
+            paymentLink: shortUrl,
+            caseId,
+            channel: "WHATSAPP",
+          });
+        } else {
+          await sendRecoveryEmail({
+            to: caseRecord.customer.email,
+            customerName: caseRecord.customer.name,
+            amountAtRisk: caseRecord.amountAtRisk.toString(),
+            currency: caseRecord.currency,
+            paymentLink: shortUrl,
+            caseId,
+          });
+        }
+
+        await prisma.$transaction([
+          prisma.revenueCase.update({
+            where: { id: caseId },
+            data: { attemptsUsed: { increment: 1 } },
+          }),
+          prisma.auditEntry.create({
+            data: {
+              caseId,
+              actor: "system:inngest-followup",
+              action: "execution",
+              reasoning: `Follow-up reminder sent (Attempt ${retryResult.attemptNumber}/${caseRecord.maxAttempts})`,
+              metadata: { attempt: retryResult.attemptNumber, payment_link_url: shortUrl },
+            },
+          }),
+        ]);
       });
     }
 
