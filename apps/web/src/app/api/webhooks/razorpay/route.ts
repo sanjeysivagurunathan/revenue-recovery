@@ -35,7 +35,12 @@ function mapEventToLeakType(event: string): string | null {
   if (event.startsWith("payment.failed")) {
     return LeakType.PAYMENT_DEGRADATION;
   }
-  if (event.startsWith("subscription.charged.failed") || event.startsWith("subscription.halted")) {
+  if (
+    event.startsWith("subscription.charged.failed") ||
+    event.startsWith("subscription.halted") ||
+    event.startsWith("subscription.pending") ||
+    event.startsWith("subscription.paused")
+  ) {
     return LeakType.SUBSCRIPTION_FAILURE;
   }
   return null;
@@ -43,17 +48,24 @@ function mapEventToLeakType(event: string): string | null {
 
 /**
  * Handle a successful payment event — mark the linked case as RECOVERED.
- * Razorpay fires: order.paid, payment.captured, payment_link.paid
+ * Razorpay fires: order.paid, payment.captured, payment_link.paid, subscription.charged
  */
 async function handlePaymentSuccess(payload: any): Promise<void> {
   const payment = payload.payload?.payment?.entity;
   const order = payload.payload?.order?.entity;
   const paymentLink = payload.payload?.payment_link?.entity;
+  const subscription = payload.payload?.subscription?.entity;
+  const invoice = payload.payload?.invoice?.entity;
 
   let matchedCaseId: string | null = null;
 
   // 1. Direct check: case_id stored inside Razorpay notes object
-  const noteCaseId = payment?.notes?.case_id || order?.notes?.case_id || paymentLink?.notes?.case_id;
+  const noteCaseId =
+    payment?.notes?.case_id ||
+    order?.notes?.case_id ||
+    paymentLink?.notes?.case_id ||
+    subscription?.notes?.case_id;
+
   if (noteCaseId) {
     const caseByNote = await prisma.revenueCase.findUnique({ where: { id: noteCaseId } });
     if (caseByNote) {
@@ -66,8 +78,11 @@ async function handlePaymentSuccess(payload: any): Promise<void> {
     const possibleRefs: string[] = [];
     if (payment?.id) possibleRefs.push(payment.id);
     if (payment?.order_id) possibleRefs.push(payment.order_id);
+    if (payment?.subscription_id) possibleRefs.push(payment.subscription_id);
     if (order?.id) possibleRefs.push(order.id);
     if (paymentLink?.id) possibleRefs.push(paymentLink.id);
+    if (subscription?.id) possibleRefs.push(subscription.id);
+    if (invoice?.subscription_id) possibleRefs.push(invoice.subscription_id);
 
     if (possibleRefs.length > 0) {
       const matchedCase = await prisma.revenueCase.findFirst({
@@ -82,7 +97,8 @@ async function handlePaymentSuccess(payload: any): Promise<void> {
 
   // 3. Fallback: parse case ID from description if present
   if (!matchedCaseId) {
-    const description = paymentLink?.description ?? payment?.description ?? order?.description ?? "";
+    const description =
+      paymentLink?.description ?? payment?.description ?? order?.description ?? "";
     const caseIdMatch = description.match(/\(case ([a-z0-9]+)\)/i);
     if (caseIdMatch) {
       const caseById = await prisma.revenueCase.findUnique({ where: { id: caseIdMatch[1] } });
@@ -95,7 +111,12 @@ async function handlePaymentSuccess(payload: any): Promise<void> {
     return;
   }
 
-  const amountPaise = payment?.amount ?? order?.amount ?? paymentLink?.amount ?? 0;
+  const amountPaise =
+    payment?.amount ??
+    order?.amount ??
+    paymentLink?.amount ??
+    subscription?.current_billing_amount ??
+    0;
   const amountRecovered = amountPaise > 0 ? amountPaise / 100 : 0;
 
   await prisma.$transaction([
@@ -114,7 +135,7 @@ async function handlePaymentSuccess(payload: any): Promise<void> {
         action: "state_transition",
         fromStatus: CaseStatus.INTERVENING,
         toStatus: CaseStatus.RECOVERED,
-        reasoning: `Payment successfully captured via Razorpay live webhook (${payload.event}). INR ${amountRecovered} recovered. (Payment ID: ${payment?.id ?? "N/A"})`,
+        reasoning: `Payment successfully captured via Razorpay live webhook (${payload.event}). INR ${amountRecovered} recovered. (Ref: ${payment?.id ?? subscription?.id ?? "N/A"})`,
       },
     }),
   ]);
@@ -157,7 +178,13 @@ export async function POST(req: NextRequest) {
   console.log("[Webhook] Razorpay event received:", event);
 
   /* ── 4a. Handle SUCCESS events → mark case as RECOVERED ── */
-  const successEvents = ["order.paid", "payment.captured", "payment_link.paid"];
+  const successEvents = [
+    "order.paid",
+    "payment.captured",
+    "payment_link.paid",
+    "subscription.charged",
+    "subscription.activated",
+  ];
   if (successEvents.includes(event)) {
     await handlePaymentSuccess(payload);
     return NextResponse.json({ received: true });
@@ -167,10 +194,10 @@ export async function POST(req: NextRequest) {
   const leakType = mapEventToLeakType(event);
 
   let sourceRef = "";
-  if (payload.payload.payment) {
-    sourceRef = payload.payload.payment.entity.id;
-  } else if (payload.payload.subscription) {
+  if (payload.payload.subscription) {
     sourceRef = payload.payload.subscription.entity.id;
+  } else if (payload.payload.payment) {
+    sourceRef = payload.payload.payment.entity.id;
   } else if (payload.payload.order) {
     sourceRef = payload.payload.order.entity.id;
   }

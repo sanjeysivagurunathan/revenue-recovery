@@ -51,15 +51,22 @@ export const recoveryPipelineFunction = inngest.createFunction(
 
       const customerEmail =
         paymentEntity?.email ||
+        subEntity?.notes?.email ||
+        subEntity?.customer_email ||
         rawPayload.email ||
-        "customer@example.com";
+        "subscriber@example.com";
 
       const customerPhone =
         paymentEntity?.contact ||
+        subEntity?.notes?.contact ||
+        subEntity?.notes?.phone ||
+        subEntity?.customer_contact ||
         rawPayload.phone ||
         null;
 
       const customerName =
+        subEntity?.notes?.customer_name ||
+        subEntity?.notes?.name ||
         paymentEntity?.notes?.customer_name ||
         paymentEntity?.notes?.name ||
         customerEmail.split("@")[0];
@@ -68,10 +75,11 @@ export const recoveryPipelineFunction = inngest.createFunction(
         paymentEntity?.amount ||
         orderEntity?.amount ||
         subEntity?.current_billing_amount ||
-        0;
+        (subEntity?.plan?.item?.amount ? subEntity.plan.item.amount : 0) ||
+        199900;
 
       const amountAtRisk = amountPaise / 100;
-      const currency = paymentEntity?.currency || "INR";
+      const currency = paymentEntity?.currency || subEntity?.currency || "INR";
 
       // 1. Find or create Customer
       let customer = await prisma.customer.findFirst({
@@ -168,29 +176,41 @@ export const recoveryPipelineFunction = inngest.createFunction(
       if (!revenueCase) throw new Error(`Case ${caseId} not found`);
 
       const prompt = `
-You are diagnosing a failed payment. Be concise — max 1 sentence for reasoning.
+You are diagnosing a failed payment or recurring subscription renewal. Be concise — max 1 sentence for reasoning.
 
 Amount: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
 Leak Type: ${revenueCase.leakType}
 
-Webhook error fields:
+Webhook error & subscription details:
 ${JSON.stringify(
   revenueCase.events.map((e) => {
     const p = (e.payload as any)?.payload?.payment?.entity;
-    return p
-      ? {
-          error_code: p.error_code,
-          error_description: p.error_description,
-          error_reason: p.error_reason,
-          error_step: p.error_step,
-        }
-      : { type: e.type };
+    const s = (e.payload as any)?.payload?.subscription?.entity;
+    return {
+      event_type: e.type,
+      ...(p
+        ? {
+            error_code: p.error_code,
+            error_description: p.error_description,
+            error_reason: p.error_reason,
+            error_step: p.error_step,
+          }
+        : {}),
+      ...(s
+        ? {
+            subscription_id: s.id,
+            subscription_status: s.status,
+            plan_id: s.plan_id,
+            charge_at: s.charge_at,
+          }
+        : {}),
+    };
   }),
   null,
   2
 )}
 
-Identify the root cause from allowed enum values. Keep reasoning to 1 short sentence. Provide confidence and recommended urgency.
+Identify the root cause from allowed enum values (e.g. upi_mandate_failed, insufficient_funds, card_expired, bank_decline_soft, unknown). Keep reasoning to 1 short sentence. Provide confidence and recommended urgency.
 `;
 
       const diagOutput = await generateDiagnosis(prompt);
@@ -249,9 +269,10 @@ Identify the root cause from allowed enum values. Keep reasoning to 1 short sent
       ];
 
       const prompt = `
-Decide the best recovery action for a failed payment. Be concise — max 1 sentence for reasoning.
+Decide the best recovery action for a failed payment or recurring subscription. Be concise — max 1 sentence for reasoning.
 
 Amount: ${revenueCase.amountAtRisk.toString()} ${revenueCase.currency}
+Leak Type: ${revenueCase.leakType}
 Previous Attempts: ${revenueCase.attemptsUsed} / ${revenueCase.maxAttempts}
 Root Cause: ${revenueCase.rootCause}
 Urgency: ${diagnosis.recommended_urgency}
@@ -261,7 +282,8 @@ Constraints (no exceptions):
 - Allowed Channels: ${allowedChannels.join(", ")}
 - If attempts >= max attempts, MUST choose "escalate_human" + "HUMAN_HANDOFF".
 - If reasoning mentions "permanently blocked" or "card blocked", MUST NOT choose "retry_payment" — choose "send_reminder" via "WHATSAPP" or "EMAIL".
-- If root_cause is "insufficient_funds" and attempts < max, prefer "retry_payment".
+- If leakType is "SUBSCRIPTION_FAILURE" and root_cause is "upi_mandate_failed" or "card_expired", choose "send_reminder" via "WHATSAPP" or "EMAIL" so the subscriber can update their mandate or clear renewal dues with the payment link.
+- If root_cause is "insufficient_funds" and attempts < max, prefer "retry_payment" or "send_reminder" via "WHATSAPP".
 - Otherwise first contact: prefer "send_reminder" via "WHATSAPP" if phone available, else "EMAIL".
 
 Respond with action, channel, and 1 short sentence reasoning.
@@ -349,6 +371,11 @@ Respond with action, channel, and 1 short sentence reasoning.
         }
 
         case "send_payment_link": {
+          const itemDescription =
+            revenueCase.leakType === LeakType.SUBSCRIPTION_FAILURE
+              ? `Subscription renewal dues (case ${caseId})`
+              : `Payment reminder (case ${caseId})`;
+
           const shortUrl = await createPaymentLink({
             caseId,
             amountPaise: Math.round(Number(revenueCase.amountAtRisk) * 100),
@@ -356,7 +383,7 @@ Respond with action, channel, and 1 short sentence reasoning.
             customerName: revenueCase.customer.name,
             customerEmail: revenueCase.customer.email,
             customerPhone: revenueCase.customer.phone,
-            description: `Payment reminder (case ${caseId})`,
+            description: itemDescription,
           });
 
           await sendRecoveryEmail({
@@ -375,6 +402,11 @@ Respond with action, channel, and 1 short sentence reasoning.
 
         case "send_reminder": {
           const channel = intervention.channel;
+          const itemDescription =
+            revenueCase.leakType === LeakType.SUBSCRIPTION_FAILURE
+              ? `Subscription renewal dues (case ${caseId})`
+              : `Payment reminder (case ${caseId})`;
+
           const shortUrl = await createPaymentLink({
             caseId,
             amountPaise: Math.round(Number(revenueCase.amountAtRisk) * 100),
@@ -382,7 +414,7 @@ Respond with action, channel, and 1 short sentence reasoning.
             customerName: revenueCase.customer.name,
             customerEmail: revenueCase.customer.email,
             customerPhone: revenueCase.customer.phone,
-            description: `Payment reminder (case ${caseId})`,
+            description: itemDescription,
           });
 
           if (channel === "EMAIL") {
@@ -471,7 +503,7 @@ Respond with action, channel, and 1 short sentence reasoning.
       const paymentEvent = await step.waitForEvent("wait-for-customer-payment", {
         event: "revenue/case.recovered",
         timeout: "1h",
-        match: "data.caseId",
+        if: `async.data.caseId == "${caseId}"`,
       });
 
       if (paymentEvent) {
@@ -530,6 +562,11 @@ Respond with action, channel, and 1 short sentence reasoning.
         });
         if (!caseRecord) return;
 
+        const followupDesc =
+          caseRecord.leakType === LeakType.SUBSCRIPTION_FAILURE
+            ? `Subscription renewal attempt ${retryResult.attemptNumber} (case ${caseId})`
+            : `Payment reminder attempt ${retryResult.attemptNumber} (case ${caseId})`;
+
         const shortUrl = await createPaymentLink({
           caseId,
           amountPaise: Math.round(Number(caseRecord.amountAtRisk) * 100),
@@ -537,7 +574,7 @@ Respond with action, channel, and 1 short sentence reasoning.
           customerName: caseRecord.customer.name,
           customerEmail: caseRecord.customer.email,
           customerPhone: caseRecord.customer.phone,
-          description: `Payment reminder attempt ${retryResult.attemptNumber} (case ${caseId})`,
+          description: followupDesc,
         });
 
         if (caseRecord.customer.phone) {

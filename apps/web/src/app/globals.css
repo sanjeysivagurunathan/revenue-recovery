@@ -175,3 +175,38 @@ a:focus-visible {
   border-radius: var(--radius);
   animation: skeleton-pulse 1.4s ease-in-out infinite;
 }
+
+/* Real-time recovery flash */
+@keyframes recovered-flash {
+  0%   { background-color: transparent; }
+  15%  { background-color: rgba(34, 197, 94, 0.25); box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.4) inset; }
+  50%  { background-color: rgba(34, 197, 94, 0.15); }
+  100% { background-color: transparent; }
+}
+.case-recovered-flash {
+  animation: recovered-flash 3s ease-in-out forwards;
+}
+
+/* Live polling indicator */
+@keyframes live-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  color: #22c55e;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.live-indicator::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: live-blink 1.2s ease-in-out infinite;
+}

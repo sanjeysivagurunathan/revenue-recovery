@@ -27,14 +27,16 @@ export default function CasesPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedCase, setSelectedCase] = useState<any | null>(null);
+  const [recoveredIds, setRecoveredIds] = useState<Set<string>>(new Set());
+  const prevStatusRef = useState<Record<string, string>>({});
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const fetchCases = async () => {
-    setLoading(true);
+  const fetchCases = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       let url = "/api/cases?limit=100";
       if (statusFilter) url += `&status=${statusFilter}`;
@@ -52,18 +54,47 @@ export default function CasesPage() {
               c.sourceRef.toLowerCase().includes(q)
           );
         }
+
+        // Detect newly RECOVERED cases and flash them
+        const prev = prevStatusRef[0];
+        const newlyRecovered = new Set<string>();
+        filtered.forEach((c: any) => {
+          if (prev[c.id] && prev[c.id] !== "RECOVERED" && c.status === "RECOVERED") {
+            newlyRecovered.add(c.id);
+          }
+          prev[c.id] = c.status;
+        });
+        if (newlyRecovered.size > 0) {
+          setRecoveredIds(newlyRecovered);
+          setTimeout(() => setRecoveredIds(new Set()), 4000);
+        }
+
+        // Also update selected case if open
+        setSelectedCase((prev: any) => {
+          if (!prev) return prev;
+          const updated = filtered.find((c: any) => c.id === prev.id);
+          return updated ?? prev;
+        });
+
         setCases(filtered);
         setTotal(filtered.length);
       }
     } catch (err) {
       console.error("Failed to load cases", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
+  // Initial fetch on filter changes
   useEffect(() => {
     fetchCases();
+  }, [statusFilter, typeFilter, searchQuery]);
+
+  // Live polling every 3 seconds for active cases
+  useEffect(() => {
+    const interval = setInterval(() => fetchCases(true), 3000);
+    return () => clearInterval(interval);
   }, [statusFilter, typeFilter, searchQuery]);
 
   const getStatusBadgeClass = (status: string) => {
@@ -107,14 +138,17 @@ export default function CasesPage() {
       <div className="flex-1 w-full min-w-0 flex flex-col">
         <div className="mb-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">Revenue Cases</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Revenue Cases</h1>
+              <span className="live-indicator">LIVE</span>
+            </div>
             <p className="text-[11px] text-muted-foreground mt-1">
               Live status of automated interventions and recovery pipelines.
             </p>
             {!loading && <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-[0.08em]">{total} records</p>}
           </div>
           <button
-            onClick={fetchCases}
+            onClick={() => fetchCases()}
             className="btn btn-ghost py-1.5 px-3 flex items-center gap-1.5 text-xs self-start"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -201,7 +235,7 @@ export default function CasesPage() {
                     onClick={() => setSelectedCase(c)}
                     className={`hover:bg-surface-raised transition-colors cursor-pointer ${
                       selectedCase?.id === c.id ? "bg-surface-raised" : ""
-                    }`}
+                    } ${recoveredIds.has(c.id) ? "case-recovered-flash" : ""}`}
                   >
                     <td className="px-4 py-3">
                       <div className="font-medium text-foreground">{c.customer.name}</div>

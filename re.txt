@@ -32,8 +32,11 @@
 ⚡ TESTING & DEMO COMMANDS
 =======================================================
 
-- Inject a live failed payment (Triggers AI Outreach):
+- Inject a live failed payment (PAYMENT_DEGRADATION):
   npx tsx scripts/test-webhook.ts --email kopykatqueryonline@gmail.com --error card_blocked
+
+- Inject a live recurring subscription failure (SUBSCRIPTION_FAILURE):
+  npx tsx scripts/test-webhook.ts --type subscription --email kopykatqueryonline@gmail.com --error upi_mandate_failed
 
 - Simulate instant payment recovery for a case:
   npx tsx scripts/test-payment-success.ts --caseId <case_id>
