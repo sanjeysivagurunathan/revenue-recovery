@@ -16,8 +16,8 @@ import { inngest } from "./client";
 import { prisma, CaseStatus, InterventionChannel, InterventionStatus, LeakType } from "@revenue-recovery/db";
 import { generateDiagnosis, generateDecision } from "./adapters/llm";
 import { runGuardrails } from "./adapters/guardrails";
-import { sendRecoveryEmail } from "./adapters/email";
-import { sendSms } from "./adapters/sms";
+import { sendRecoveryEmail, sendPaymentSuccessEmail } from "./adapters/email";
+import { sendSms, sendPaymentSuccessSms } from "./adapters/sms";
 import { retryPayment, createPaymentLink } from "./adapters/razorpay";
 
 const TERMINAL_STATUSES: CaseStatus[] = [
@@ -505,9 +505,52 @@ Respond with action, channel, and 1 short sentence reasoning.
       });
 
       if (paymentEvent) {
-        // Customer paid! Complete the workflow immediately
+        // Customer paid! Complete the workflow immediately and send payment confirmation receipts
         await step.run("payment-confirmed-complete", async () => {
           console.log(`[Inngest:SUCCESS] Case ${caseId} payment confirmed via event!`);
+
+          const currentCase = await prisma.revenueCase.findUnique({
+            where: { id: caseId },
+            include: { customer: true },
+          });
+
+          if (currentCase) {
+            const amountPaid =
+              currentCase.amountRecovered && Number(currentCase.amountRecovered) > 0
+                ? currentCase.amountRecovered.toString()
+                : currentCase.amountAtRisk.toString();
+
+            const receiptTasks: Promise<any>[] = [];
+
+            if (currentCase.customer.email) {
+              receiptTasks.push(
+                sendPaymentSuccessEmail({
+                  to: currentCase.customer.email,
+                  customerName: currentCase.customer.name,
+                  amountPaid,
+                  currency: currentCase.currency,
+                  caseId,
+                }).catch((err) => console.warn("[SuccessEmail] Warning:", err.message))
+              );
+            }
+
+            if (currentCase.customer.phone || currentCase.customer.email) {
+              receiptTasks.push(
+                sendPaymentSuccessSms({
+                  to: currentCase.customer.phone || currentCase.customer.email,
+                  customerName: currentCase.customer.name,
+                  customerEmail: currentCase.customer.email,
+                  amountPaid,
+                  currency: currentCase.currency,
+                  caseId,
+                  channel: "WHATSAPP",
+                }).catch((err) => console.warn("[SuccessWhatsApp] Warning:", err.message))
+              );
+            }
+
+            await Promise.all(receiptTasks);
+          }
+
           return { status: "RECOVERED", recoveredAt: new Date().toISOString() };
         });
         break;

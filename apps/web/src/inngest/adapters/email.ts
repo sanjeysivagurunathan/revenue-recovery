@@ -57,7 +57,7 @@ export async function sendRecoveryEmail(payload: EmailPayload): Promise<void> {
 
   const resend = getResendClient();
   const from = process.env["RESEND_FROM_EMAIL"] ?? "onboarding@resend.dev";
-  const actualTo = process.env["TEST_EMAIL"] || "sanjudote45@gmail.com";
+  const actualTo = process.env["TEST_EMAIL"] || to || "sanjudote45@gmail.com";
 
   const { error } = await resend.emails.send({
     from,
@@ -71,4 +71,70 @@ export async function sendRecoveryEmail(payload: EmailPayload): Promise<void> {
   }
 
   console.log(`[EmailAdapter] Recovery email sent for case ${caseId} to ${actualTo}`);
+}
+
+export interface PaymentSuccessEmailPayload {
+  to: string;
+  customerName: string;
+  amountPaid: string;
+  currency: string;
+  caseId: string;
+}
+
+export async function sendPaymentSuccessEmail(payload: PaymentSuccessEmailPayload): Promise<void> {
+  const { to, customerName, amountPaid, currency, caseId } = payload;
+
+  const subject = `✅ Payment Receipt: ${currency} ${amountPaid} received successfully`;
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;">
+      <div style="display: inline-block; background: #ecfdf5; color: #059669; padding: 6px 12px; border-radius: 9999px; font-weight: 600; font-size: 13px; margin-bottom: 16px;">
+        ✓ Payment Confirmed
+      </div>
+      <h2 style="color: #111827; margin-top: 0; font-size: 22px;">Payment Successful!</h2>
+      <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">
+        Hello ${customerName}, we have successfully received and processed your payment of <strong>${currency} ${amountPaid}</strong>.
+      </p>
+      
+      <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 24px 0;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="color: #6b7280; padding: 6px 0;">Amount Paid:</td>
+            <td style="color: #111827; font-weight: 600; text-align: right; padding: 6px 0;">${currency} ${amountPaid}</td>
+          </tr>
+          <tr>
+            <td style="color: #6b7280; padding: 6px 0;">Status:</td>
+            <td style="color: #059669; font-weight: 600; text-align: right; padding: 6px 0;">PAID & SETTLED</td>
+          </tr>
+          <tr>
+            <td style="color: #6b7280; padding: 6px 0;">Case Reference:</td>
+            <td style="color: #111827; font-family: monospace; font-size: 12px; text-align: right; padding: 6px 0;">${caseId}</td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="color: #4b5563; font-size: 14px;">
+        Your account and services are now fully active and in good standing. Thank you for your payment!
+      </p>
+      <hr style="border: none; border-top: 1px solid #f3f4f6; margin: 28px 0;" />
+      <p style="color: #9ca3af; font-size: 12px; margin: 0;">Autonomous Revenue Recovery Agent</p>
+    </div>
+  `;
+
+  const resend = getResendClient();
+  const from = process.env["RESEND_FROM_EMAIL"] ?? "onboarding@resend.dev";
+  const actualTo = process.env["TEST_EMAIL"] || to || "sanjudote45@gmail.com";
+
+  const { error } = await resend.emails.send({
+    from,
+    to: actualTo,
+    subject,
+    html,
+  });
+
+  if (error) {
+    throw new Error(`Resend payment success email failed: ${error.message}`);
+  }
+
+  console.log(`[EmailAdapter] ✅ Payment receipt email sent for case ${caseId} to ${actualTo}`);
 }
