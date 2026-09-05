@@ -1,63 +1,63 @@
-# ⚡ Autonomous AI Revenue Recovery Agent
-### Razorpay Buildathon — Track 03: AI Revenue Recovery
-> **Find revenue that’s slipping away and win it back.**  
-> An autonomous, closed-loop AI agent that detects revenue leaks, diagnoses the exact failure root cause, selects optimal compliant interventions, and executes bounded multi-channel recovery workflows with an immutable audit trail.
+# Autonomous AI Revenue Recovery Agent
+## Razorpay Buildathon — Track 03: AI Revenue Recovery
+
+An autonomous, closed-loop AI agent that detects revenue at risk, diagnoses root causes, selects compliant recovery interventions, and executes bounded multi-channel recovery workflows with an immutable audit trail.
 
 ---
 
-## 🎥 Project Demo Video
+## Project Demo Video
 
-> 🔗 **[Click Here to Watch the Full Video Walkthrough on Google Drive](https://drive.google.com/file/d/YOUR_GOOGLE_DRIVE_VIDEO_ID/view?usp=sharing)**  
-> *(Replace `YOUR_GOOGLE_DRIVE_VIDEO_ID` with your uploaded video share link)*
-
----
-
-## 💡 The Problem & "Why Now"
-
-Revenue loss rarely happens in one clean step:
-1. **Payment Degradation**: A card decline, bank downtime, or insufficient funds causes a direct payment failure.
-2. **Subscription Mandate Failures**: Recurring UPI AutoPay or card mandates fail silently or reach limit limits.
-3. **Checkout Drop-offs**: High intent shoppers drop off at the final step due to price surprise or missing payment methods.
-4. **B2B Receivables Aging**: Invoices and Net-30 payment links sit unpaid, or trigger unhandled billing disputes.
-
-Traditional dunning tools are **dumb, rigid, and spammy**: they execute naive timer-based retries, bombard customers with generic emails, and fail to distinguish between hard declines, bank server outages, and billing disputes.
-
-### The Solution: An Autonomous, Bounded AI Agent
-This agent acts like an autonomous **Chief Revenue Recovery Officer**:
-- 🔍 **Instant Detection**: Ingests HMAC-verified Razorpay webhooks and autonomous abandonment cron monitors.
-- 🧠 **AI Root-Cause Diagnosis**: Uses Groq (`gpt-oss-120b`) / Claude 3.5 Sonnet to classify failures into structured reasons with confidence scores.
-- 🎯 **Bounded Decision Making**: Selects optimal recovery actions (instant payment link, auto-retry, renewal dunning, or human escalation) without hallucinated copy.
-- 🚀 **Multi-Channel Orchestration**: Dispatches synchronized HTML Email (Resend) and instant WhatsApp messages (Twilio) with custom payment links.
-- 🛡️ **Deterministic Guardrails**: Enforces strict stopping rules, quiet hours (IST 9 AM – 9 PM), dispute kill-switches, max attempt limits, and high-value human approval gates (> ₹50,000).
-- 💰 **Measured Money Recovered**: Verifies incoming settlements, auto-dispatches confirmation receipts, and updates real-time ROI metrics.
+Watch the full end-to-end walkthrough on Google Drive:  
+**[Google Drive Demo Video Link](https://drive.google.com/file/d/YOUR_GOOGLE_DRIVE_VIDEO_ID/view?usp=sharing)**  
+*(Replace `YOUR_GOOGLE_DRIVE_VIDEO_ID` with your shared Google Drive link)*
 
 ---
 
-## 🚀 4 End-to-End Revenue Recovery Engines
+## Overview and Problem Statement
 
-Our system addresses all 4 key revenue leak directions defined in Track 03:
+Revenue leakage rarely happens in one clean step. Businesses lose substantial revenue across multiple touchpoints:
+1. **Payment Degradation**: Bank declines, card blocks, and insufficient balance cause immediate drop-offs.
+2. **Subscription Mandate Failures**: Recurring UPI AutoPay or card mandates fail silently or hit velocity limits.
+3. **Checkout Abandonment**: High-intent shoppers drop out at final checkout due to payment friction or pricing surprises.
+4. **B2B Receivables Overdue**: Unpaid invoices and Net-30 payment links accumulate without systematic follow-up or dispute triage.
+
+Traditional dunning tools rely on naive, static cron jobs that send generic spam emails on a fixed cadence. They do not diagnose the actual failure reason, cannot adapt their outreach channel or tone, and lack guardrails to prevent customer harassment.
+
+### How This Agent Solves It
+
+This project implements an autonomous revenue recovery agent built directly on top of Razorpay's payment rails and Inngest's durable execution engine:
+- **Instant Event Ingestion**: Ingests HMAC-SHA256 verified Razorpay webhooks and runs autonomous checkout abandonment scans.
+- **Root-Cause Diagnosis via LLM**: Uses Groq (`openai/gpt-oss-120b`) or Anthropic Claude with strict JSON schemas to categorize failure reasons (such as `insufficient_funds`, `upi_mandate_failed`, `cart_price_shock`, or `invoice_dispute`).
+- **Bounded Action Decisions**: The AI selects bounded actions (e.g. generating an alternate Razorpay payment link, dispatching multi-channel dunning, or routing to human review) rather than writing unconstrained messages.
+- **Synchronized Multi-Channel Dispatch**: Reaches customers across email (via Resend) and WhatsApp / SMS (via Twilio) with dedicated payment recovery links.
+- **Deterministic Guardrails**: Enforces quiet hours (9 AM to 9 PM IST), maximum attempt limits, customer dispute freeze rules, and human approval gates for high-value transactions (> Rs 50,000).
+- **Verified Settlement & Recovery**: Listens for incoming payment confirmation webhooks, auto-dispatches payment receipts, updates the recovery metrics, and closes the case.
+
+---
+
+## The Four Implemented Recovery Engines
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────────┐
-│                           4 CORE REVENUE LEAK ENGINES                             │
-├──────────────────────────┬──────────────────────────┬─────────────────────────────┤
-│ 1. PAYMENT DEGRADATION   │ 2. SUBSCRIPTION FAILURE  │ 3. CHECKOUT ABANDONMENT     │
-│ • payment.failed webhooks│ • subscription.charged   │ • 15-min Inngest scanner    │
-│ • Insufficient funds     │ • UPI Autopay mandate    │ • order.abandoned event     │
-│ • Card blocked / limits  │ • Card expiration        │ • Cart price-shock dunning  │
-│ • Dynamic Payment Links  │ • 1-click mandate update │ • Personalized incentives   │
-├──────────────────────────┴──────────────────────────┴─────────────────────────────┤
-│ 4. B2B RECEIVABLES CHASER & PROMISE-TO-PAY (PTP) TRACKER                          │
-│ • invoice.past_due / receivable overdue ingestion                                 │
-│ • Automatic Dispute Escalation vs. Overdue Accounts Payable chaser                │
-│ • Promise-to-Pay (PTP) Tracker API (/api/cases/[id]/promise-to-pay)               │
-│ • Freezes outreach until promised date; automatically resumes if breached         │
-└───────────────────────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------------------------+
+|                            4 CORE REVENUE LEAK ENGINES                            |
++--------------------------+--------------------------+-----------------------------+
+| 1. PAYMENT DEGRADATION   | 2. SUBSCRIPTION FAILURE  | 3. CHECKOUT ABANDONMENT     |
+| - payment.failed events  | - subscription.charged   | - 15-minute Inngest scanner |
+| - Card / bank decline    | - UPI AutoPay failure    | - order.abandoned event     |
+| - Insufficient funds     | - Card expiry            | - Cart price-shock dunning  |
+| - Dynamic payment links  | - 1-click mandate update | - Personalized incentives   |
++--------------------------+--------------------------+-----------------------------+
+| 4. B2B RECEIVABLES CHASER & PROMISE-TO-PAY (PTP) TRACKER                          |
+| - invoice.past_due / overdue receivable ingestion                                 |
+| - Automated dispute triage (escalates to human review) vs. standard chasing       |
+| - Promise-to-Pay API (/api/cases/[id]/promise-to-pay)                             |
+| - Pauses outreach until promised date; automatically resumes if breached          |
++-----------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 🏗️ System Architecture & Workflow
+## System Architecture
 
 ```mermaid
 flowchart TD
@@ -74,7 +74,7 @@ flowchart TD
         PIPE --> LLM1[Groq / Claude LLM<br/>Structured Root Cause Diagnosis]
         LLM1 --> LLM2[Groq / Claude LLM<br/>Bounded Action Decision]
         
-        LLM2 --> GUARD{Deterministic Guardrails<br/>• Max Attempts<br/>• Quiet Hours<br/>• High-Value Gate<br/>• Dispute Freeze}
+        LLM2 --> GUARD{Deterministic Guardrails<br/>- Max Attempts<br/>- Quiet Hours<br/>- High-Value Gate<br/>- Dispute Freeze}
     end
 
     subgraph Action["3. MULTI-CHANNEL EXECUTION"]
@@ -91,78 +91,78 @@ flowchart TD
         PAY --> VERIFY[Razorpay payment_link.paid]
         VERIFY --> DB
         VERIFY --> RECEIPT[Instant Recovery Confirmation<br/>Email + WhatsApp]
-        DB --> DASH[Live Real-time Dashboard<br/>Metrics & Audit Trail]
+        DB --> DASH[Live Real-Time Dashboard<br/>Metrics & Audit Trail]
     end
 ```
 
 ---
 
-## 🛡️ Autonomous Pipeline Stages
+## State Machine and Lifecycle
 
-Each revenue leak moves through an explicit 5-stage state machine:
+Every revenue leak progresses through an explicit state machine:
 
 | Stage | Name | Description |
 |---|---|---|
-| **1** | **DETECT** | Ingests the leak event, deduplicates by `sourceRef`, extracts customer contact info, and creates a `RevenueCase` in the `DETECTED` status with an initial `AuditEntry`. |
-| **2** | **DIAGNOSE** | Runs AI root-cause analysis via Groq/Claude with a strict JSON schema. Categorizes failure (e.g., `insufficient_funds`, `upi_mandate_failed`, `cart_price_shock`, `invoice_dispute`). |
-| **3** | **DECIDE** | Evaluates policy rules, customer risk score, and history to choose the optimal action, channel, tone, and retry cadence. |
-| **4** | **ACT** | Validates deterministic guardrails. If approved, creates a dynamic Razorpay Payment Link and dispatches synchronized Email + WhatsApp notifications. |
-| **5** | **VERIFY** | Waits durably for payment settlement. Upon payment capture, transitions status to `RECOVERED`, issues confirmation receipts, and records recovered revenue in the audit log. |
+| 1 | DETECT | Ingests the leak event, deduplicates by `sourceRef`, extracts customer details, and creates a `RevenueCase` with status `DETECTED`. |
+| 2 | DIAGNOSE | AI model classifies the failure payload into structured root causes with confidence scores. |
+| 3 | DECIDE | AI evaluates policy constraints, previous attempts, and customer history to determine the next action and channel. |
+| 4 | ACT | Validates deterministic guardrails. If clear, creates a Razorpay Payment Link and sends coordinated Email + WhatsApp messages. |
+| 5 | VERIFY | Durably waits for payment. Upon capture, transitions status to `RECOVERED`, dispatches a receipt, and updates financial metrics. |
 
 ---
 
-## 📊 Live Interactive Dashboard
+## Dashboard Capabilities
 
-The dashboard provides real-time visibility and control:
-- **Command Center (`/cases`)**: Live status filters (`DETECTED`, `INTERVENING`, `AWAITING_CUSTOMER`, `RECOVERED`, `ESCALATED`), detailed case drawer, timeline inspection, and Promise-to-Pay logging.
-- **Financial Analytics (`/metrics`)**: Total Revenue at Risk, Total Money Recovered, Overall Recovery Rate %, and breakdown by leak type.
-- **Human Approval Gate (`/approvals`)**: High-value cases (> ₹50,000) or ambiguous disputes are routed here for 1-click human review.
-- **Recovery Policies (`/policies`)**: Configure quiet hours, maximum retry attempts, cooldown delays, and enabled channels per leak type.
-- **Complete Audit Trail**: Every AI prompt, diagnosis JSON, guardrail check, and state transition is immutably logged in PostgreSQL.
-
----
-
-## 🛠️ Tech Stack
-
-- **Framework**: [Next.js 15 (App Router)](https://nextjs.org/) + TypeScript + React 19
-- **Durable Orchestration**: [Inngest](https://www.inngest.com/) (Durable step execution, event-driven retries, and background crons)
-- **AI / LLM Engine**: [Groq API](https://groq.com/) (`openai/gpt-oss-120b`) / [Anthropic Claude 3.5 Sonnet](https://anthropic.com) with strict JSON tool-calling
-- **Database & ORM**: PostgreSQL + [Prisma ORM](https://www.prisma.io/) (Decimal precision for INR currency)
-- **Payment Infrastructure**: [Razorpay APIs](https://razorpay.com/docs/) (Payment Links, Orders, Subscriptions, Webhooks with HMAC verification)
-- **Multi-Channel Communication**: [Resend](https://resend.com/) (HTML Email) & [Twilio](https://twilio.com/) (WhatsApp Sandbox & SMS)
-- **Monorepo Tooling**: TurboRepo + Docker Compose
+- **Case Management (`/cases`)**: Filter by status (`DETECTED`, `INTERVENING`, `AWAITING_CUSTOMER`, `RECOVERED`, `ESCALATED`, `STOPPED`), inspect full event payloads, view timeline logs, and record Promise-to-Pay dates.
+- **Financial Metrics (`/metrics`)**: Displays real-time total revenue at risk, total recovered amount, recovery rate percentage, and breakdown by leak type.
+- **Human Approval Queue (`/approvals`)**: High-value cases exceeding the threshold (Rs 50,000) or flagged disputes require explicit operator approval before outreach.
+- **Configurable Policies (`/policies`)**: Adjust allowed channels, retry limits, cooldown periods, and quiet hour boundaries.
+- **Immutable Audit Trail**: Synchronously records every state transition, LLM output, guardrail check, and dispatch timestamp into the PostgreSQL database.
 
 ---
 
-## ⚡ Quick Start & Local Setup
+## Tech Stack
 
-### 1. Prerequisites
-- **Node.js**: `v20+` & `npm 10+`
-- **Docker Desktop**: For PostgreSQL & Redis
+- **Application Framework**: Next.js 15 (App Router), React 19, TypeScript
+- **Durable Orchestration**: Inngest
+- **AI / LLM Engine**: Groq (`openai/gpt-oss-120b`) / Anthropic Claude 3.5 Sonnet (Structured JSON outputs)
+- **Database & ORM**: PostgreSQL with Prisma ORM (Decimal fields for exact INR handling)
+- **Payment Gateway**: Razorpay (Payment Links API, Orders API, Subscriptions API, Webhook HMAC Verification)
+- **Outbound Channels**: Resend (Email), Twilio (WhatsApp Sandbox and SMS)
+- **Monorepo Management**: TurboRepo, Docker Compose
 
-### 2. Clone & Install Dependencies
+---
+
+## Quick Start and Local Setup
+
+### Prerequisites
+- Node.js 20 or higher, npm 10 or higher
+- Docker Desktop (for local PostgreSQL and Redis containers)
+
+### 1. Clone the Repository
 ```bash
 git clone <your-repository-url>
 cd revenue-recovery
 npm install
 ```
 
-### 3. Configure Environment Variables
-Copy `.env.example` to `.env` in the root directory:
+### 2. Configure Environment Variables
+Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
-Fill in your API keys (Groq / Anthropic, Razorpay Test Keys, Resend, Twilio):
+
+Ensure the following variables are set in `.env`:
 ```env
 DATABASE_URL="postgresql://revenue:revenue_dev_secret@localhost:5432/revenue_recovery"
 REDIS_URL="redis://:redis_dev_secret@localhost:6379"
 
-# AI Provider
+# LLM Configuration
 GROQ_API_KEY="your-groq-api-key"
 GROQ_MODEL="openai/gpt-oss-120b"
 # ANTHROPIC_API_KEY="your-anthropic-key" # Optional fallback
 
-# Razorpay Test Credentials
+# Razorpay Test Mode Credentials
 RAZORPAY_KEY_ID="rzp_test_xxxxxxxxxxxxxx"
 RAZORPAY_KEY_SECRET="your_razorpay_secret"
 RAZORPAY_WEBHOOK_SECRET="Sanjey@45"
@@ -174,152 +174,156 @@ TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 TWILIO_AUTH_TOKEN="your_twilio_auth_token"
 TWILIO_WHATSAPP_NUMBER="whatsapp:+14155238886"
 
-# Thresholds
+# Business Logic
 HIGH_VALUE_APPROVAL_THRESHOLD=50000
 ```
 
-### 4. Start Infrastructure & Database
+### 3. Start Database and Push Schema
 ```bash
-# Start Postgres & Redis containers
+# Start Docker containers
 docker-compose up -d
 
-# Push database schema & generate Prisma client
+# Sync schema and generate Prisma client
 npm run db:push
 npm run db:generate
 ```
 
-### 5. Launch the Development Servers
-Run the Next.js app and Inngest background dev server:
+### 4. Run Development Servers
+Open two terminal tabs:
 
-**Terminal 1 — Next.js Web App:**
+**Terminal 1 — Next.js Application:**
 ```bash
 npm run dev
-# Dashboard opens at http://localhost:3000
+# Dashboard available at: http://localhost:3000
 ```
 
 **Terminal 2 — Inngest Dev Server:**
 ```bash
 npm run inngest:dev
-# Inngest dashboard opens at http://localhost:8288
+# Inngest Dev Dashboard available at: http://localhost:8288
 ```
 
 ---
 
-## 🧪 Judge Testing & Simulation Cheat Sheet
+## CLI Simulation and Testing Guide for Judges
 
-You can test all 4 revenue leak pipelines in real-time using our pre-built CLI simulation scripts. Each script sends an authentic, HMAC-signed Razorpay webhook to your local server.
+We have included simulation scripts that generate authentic, HMAC-signed Razorpay webhooks to exercise the entire pipeline end-to-end.
 
-### 🧹 Optional: Reset Database
-To start with a clean slate before testing:
+### Optional: Clean Database
+To reset the database before running tests:
 ```bash
 npm run db:clear
 ```
 
 ---
 
-### Test 1: Payment Degradation (Card / UPI Decline)
-Simulates a failed B2C payment (`payment.failed`) due to a blocked card or insufficient funds:
+### Scenario 1: Payment Degradation (B2C Card / Bank Failure)
+Simulate an e-commerce checkout failure (`payment.failed`):
 ```bash
 npx tsx scripts/test-webhook.ts --type payment --error card_blocked --email your_email@example.com --phone +919790317406
 ```
-- **What happens**:
-  1. AI diagnoses `card_blocked`.
-  2. Generates an alternate Razorpay Payment Link.
-  3. Dispatches customized HTML Email and WhatsApp notification.
-  4. Case enters `AWAITING_CUSTOMER` state.
+- **Execution Flow**:
+  1. Ingests webhook and records case.
+  2. AI diagnoses `card_blocked`.
+  3. Creates a new Razorpay Payment Link.
+  4. Sends email and WhatsApp notification to customer with the recovery link.
+  5. Case transitions to `AWAITING_CUSTOMER`.
 
 ---
 
-### Test 2: Subscription Mandate Failure (UPI AutoPay / Card Expired)
-Simulates a recurring subscription charge failure (`subscription.charged.failed`):
+### Scenario 2: Subscription Mandate Failure (UPI AutoPay / Card Expired)
+Simulate a failed recurring subscription charge (`subscription.charged.failed`):
 ```bash
 npx tsx scripts/test-webhook.ts --type subscription --error upi_mandate_failed --email your_email@example.com --phone +919790317406
 ```
-- **What happens**:
+- **Execution Flow**:
   1. AI diagnoses `upi_mandate_failed`.
-  2. Dispatches renewal dunning with a 1-click mandate update payment link.
+  2. Generates renewal dunning with a 1-click mandate update link.
+  3. Sends renewal alert via email and WhatsApp.
 
 ---
 
-### Test 3: Checkout Abandonment (Cart Drop-off)
-Simulates an order created 20 minutes ago that was never paid (`order.abandoned`):
+### Scenario 3: Checkout Abandonment (Cart Drop-off)
+Simulate an abandoned checkout created 20 minutes prior (`order.abandoned`):
 ```bash
 npx tsx scripts/test-webhook.ts --type checkout --error cart_price_shock --email your_email@example.com --phone +919790317406
 ```
-- **What happens**:
-  1. AI diagnoses `cart_price_shock`.
-  2. Dispatches a friendly cart recovery reminder with a direct checkout link.
+- **Execution Flow**:
+  1. AI diagnoses cart price hesitation.
+  2. Dispatches a checkout reminder link to complete the purchase.
 
 ---
 
-### Test 4: B2B Receivable Overdue & Promise-to-Pay
-Simulates a past-due B2B invoice (`invoice.past_due`):
+### Scenario 4: B2B Receivable Overdue & Promise-to-Pay
+Simulate past-due corporate receivables (`invoice.past_due`):
+
 ```bash
-# A. Normal Overdue Invoice (Auto-chased)
+# Standard overdue invoice (autonomous chasing)
 npx tsx scripts/test-webhook.ts --type invoice --error overdue_net30 --amount 15000 --email your_email@example.com
 
-# B. Disputed Invoice (Auto-escalates to Human Queue)
+# Disputed invoice (automatically escalated to human review)
 npx tsx scripts/test-webhook.ts --type invoice --error invoice_dispute --amount 25000 --email your_email@example.com
 ```
 
-#### 📅 Testing Promise-to-Pay (PTP):
-When a B2B customer promises to pay next week, log the PTP via the dashboard drawer or API:
+#### Promise-to-Pay (PTP) Logging:
+When a customer confirms a future payment commitment, log the date via the dashboard or API:
 ```bash
 curl -X POST http://localhost:3000/api/cases/<CASE_ID>/promise-to-pay \
   -H "Content-Type: application/json" \
-  -d '{"promisedDate": "2026-09-12T10:00:00Z", "notes": "Customer confirmed payment next Friday"}'
+  -d '{"promisedDate": "2026-09-12T10:00:00Z", "notes": "Customer accounts payable agreed to settle next Friday"}'
 ```
-- Outreach is automatically paused until the promised date!
+- The agent automatically freezes outreach until the promised date arrives.
 
 ---
 
-### 💰 Test 5: Verify Payment & Recover Revenue
-Simulate the customer paying the Razorpay Payment Link to close the loop:
+### Scenario 5: Verify Settlement & Recover Revenue
+Simulate the customer completing the payment to close the recovery loop:
 ```bash
 npx tsx scripts/test-payment-success.ts --caseId <CASE_ID>
 ```
-- **Result**:
-  1. Case transitions to `RECOVERED`.
-  2. Money is marked as recovered in the metrics.
-  3. Customer instantly receives a **Payment Confirmation Receipt** via Email and WhatsApp! 🎉
+- **Execution Flow**:
+  1. Ingests `payment_link.paid` webhook.
+  2. Transitions case status to `RECOVERED`.
+  3. Updates the dashboard financial analytics in real time.
+  4. Automatically sends a payment confirmation receipt via email and WhatsApp.
 
 ---
 
-## 📈 Meeting "The Bar"
+## Evaluation Criteria Breakdown
 
-| Criteria | How Our Agent Delivers |
+| Requirement | Implementation Detail |
 |---|---|
-| **Measured Money Recovered** | Real-time ROI calculation (`amountRecovered` vs `costUnits` per channel) tracked in PostgreSQL and displayed on the `/metrics` dashboard. |
-| **Compliant Escalations** | Built-in quiet hours enforcement (IST 9 AM – 9 PM), high-value approval gates (> ₹50,000), and dispute kill-switches. |
-| **Stopping Rules** | Enforces maximum attempt limits (default: 3) and hard SLA deadlines; halts automatically upon opt-out or active dispute. |
-| **Full Audit Trail** | Every state transition, LLM input/output, guardrail decision, and communication timestamp is recorded in the immutable `AuditEntry` table. |
+| **Measured Money Recovered** | Exact decimal tracking of `amountAtRisk` vs `amountRecovered` in PostgreSQL. Live ROI and recovery metrics computed on `/metrics`. |
+| **Compliant Escalations** | Quiet hours enforcement (9 AM to 9 PM IST), high-value approval gates (> Rs 50,000), and dispute detection kill-switches. |
+| **Stopping Rules** | Maximum attempt bounds (3 attempts default) and hard SLA deadlines. Cases auto-stop upon customer dispute or resolution. |
+| **Complete Audit Trail** | Every webhook event, LLM prompt, diagnosis output, guardrail evaluation, and message dispatch is saved in the `AuditEntry` table. |
 
 ---
 
-## 📁 Repository Structure
+## Directory Structure
 
 ```
 revenue-recovery/
 ├── apps/
-│   ├── web/                    # Next.js 15 Dashboard, Webhook API & Inngest Functions
-│   │   ├── src/app/            # App router pages (cases, metrics, approvals, policies)
-│   │   ├── src/inngest/        # Durable workflows (pipeline.ts, checkoutDetector.ts)
-│   │   └── src/inngest/adapters# LLM, Razorpay, Resend, Twilio, and Guardrail adapters
-│   └── worker/                 # Standalone background worker (if needed)
+│   ├── web/                    # Next.js 15 dashboard, webhook API, and Inngest workflows
+│   │   ├── src/app/            # Dashboard pages (cases, metrics, approvals, policies)
+│   │   ├── src/inngest/        # Durable pipelines (pipeline.ts, checkoutAbandonmentDetector.ts)
+│   │   └── src/inngest/adapters# LLM, Razorpay, Resend, Twilio, and Guardrails adapters
+│   └── worker/                 # Background worker processes
 ├── packages/
-│   ├── db/                     # Prisma schema, migrations, and database client
-│   └── types/                  # Shared TypeScript interfaces & types
-├── scripts/                    # Test simulation CLI scripts for judges
-│   ├── test-webhook.ts         # Multi-type Razorpay webhook simulator
-│   ├── test-payment-success.ts # Payment capture & recovery simulator
-│   ├── test-outreach.ts        # Direct channel testing script
+│   ├── db/                     # Prisma schema, database client, and migrations
+│   └── types/                  # Shared TypeScript types and interfaces
+├── scripts/                    # Test simulation scripts for judges
+│   ├── test-webhook.ts         # Multi-scenario webhook simulation script
+│   ├── test-payment-success.ts # Payment capture and recovery simulation script
+│   ├── test-outreach.ts        # Outbound channel connectivity test script
 │   └── clear-database.ts       # Database cleanup utility
-├── docker-compose.yml          # PostgreSQL & Redis container definitions
-├── package.json                # Monorepo scripts & dependencies
-└── README.md                   # Project documentation & submission guide
+├── docker-compose.yml          # PostgreSQL and Redis container specifications
+├── package.json                # Project configuration and workspaces
+└── README.md                   # Project documentation and submission guide
 ```
 
 ---
 
-## 👥 Authors & Team
-Built with ❤️ for the **Razorpay Buildathon — Track 03: AI Revenue Recovery**.
+## Authors & Submission Note
+Built for the **Razorpay Buildathon — Track 03: AI Revenue Recovery**.
