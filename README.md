@@ -8,8 +8,7 @@ An autonomous, closed-loop AI agent that detects revenue at risk, diagnoses root
 ## Project Demo Video
 
 Watch the full end-to-end walkthrough on Google Drive:  
-**[Google Drive Demo Video Link](https://drive.google.com/file/d/YOUR_GOOGLE_DRIVE_VIDEO_ID/view?usp=sharing)**  
-*(Replace `YOUR_GOOGLE_DRIVE_VIDEO_ID` with your shared Google Drive link)*
+**[Google Drive Demo Video Link](https://drive.google.com/file/d/1L2tGFVW7G7UMEHOAqYVsVINyxn2cXU1w/view?usp=sharing)**  
 
 ---
 
