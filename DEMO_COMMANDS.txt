@@ -1,0 +1,149 @@
+===============================================================================
+AUTONOMOUS REVENUE RECOVERY AGENT — VIDEO DEMO SCRIPT & COMMANDS
+===============================================================================
+
+This step-by-step guide is designed for recording your demo video for the
+Razorpay Buildathon (Track 03: AI Revenue Recovery).
+
+Target Video Length: 3 to 5 minutes
+Tabs to have open in browser before recording:
+  1. Next.js Dashboard:  http://localhost:3000/cases
+  2. Metrics Dashboard:  http://localhost:3000/metrics
+  3. Approvals Queue:    http://localhost:3000/approvals
+  4. Inngest UI:         http://localhost:8288
+  5. Your Test Email / WhatsApp (to show live incoming recovery messages)
+
+===============================================================================
+PHASE 0: PRE-RECORDING SETUP (RUN ONCE BEFORE RECORDING)
+===============================================================================
+
+1. Ensure Docker Desktop is running.
+
+2. Start PostgreSQL and Redis containers:
+   docker-compose up -d
+
+3. Push schema to PostgreSQL:
+   npm run db:push
+
+4. Reset database to a clean slate (0 cases):
+   npm run db:clear
+
+5. Start the web application (Terminal 1):
+   npm run dev
+
+6. Start the Inngest dev server (Terminal 2):
+   npm run inngest:dev
+
+7. Open a clean terminal window (Terminal 3) for executing demo commands.
+
+===============================================================================
+VIDEO RECORDING STEP-BY-STEP FLOW
+===============================================================================
+
+-------------------------------------------------------------------------------
+PART 1: INTRO & DASHBOARD OVERVIEW (0:00 - 0:30)
+-------------------------------------------------------------------------------
+- Show the clean Dashboard at http://localhost:3000/cases.
+- Mention: "We built an autonomous, bounded AI revenue recovery agent that detects,
+  diagnoses, and recovers money lost across payment failures, broken recurring
+  mandates, abandoned checkouts, and overdue B2B receivables."
+
+-------------------------------------------------------------------------------
+PART 2: PAYMENT FAILURE RECOVERY (B2C CARD DECLINE) (0:30 - 1:30)
+-------------------------------------------------------------------------------
+Goal: Show live webhook ingestion, AI root-cause diagnosis, Razorpay payment
+link creation, and dual Email + WhatsApp dispatch.
+
+Run in Terminal 3:
+npx tsx scripts/test-webhook.ts --type payment --error card_blocked --email kopykatqueryonline@gmail.com --phone +919790317406
+
+What to show on screen:
+1. Terminal output showing HMAC-SHA256 signature verification and webhook dispatch.
+2. Inngest UI (http://localhost:8288): Show the visual step execution
+   (detect -> diagnose with Groq LLM -> decide -> guardrail check -> action).
+3. Dashboard (http://localhost:3000/cases):
+   - Refresh page to show new case with status "AWAITING_CUSTOMER".
+   - Click the case to open the drawer: show Root Cause ("card_blocked"),
+     AI reasoning, generated Razorpay Payment Link, and email/WhatsApp dispatch.
+4. (Optional) Show the actual email in your inbox and WhatsApp message received.
+
+-------------------------------------------------------------------------------
+PART 3: CLOSING THE LOOP — RECOVERING REVENUE (1:30 - 2:15)
+-------------------------------------------------------------------------------
+Goal: Simulate the customer paying the link, showing status transition to
+RECOVERED, live metrics update, and automatic receipt generation.
+
+Copy the Case ID from the drawer (e.g. case_cm...) and run in Terminal 3:
+npx tsx scripts/test-payment-success.ts --caseId <CASE_ID>
+
+(Replace <CASE_ID> with the actual ID from your dashboard)
+
+What to show on screen:
+1. Case status in dashboard instantly switches to "RECOVERED" (green badge).
+2. Open http://localhost:3000/metrics: Show Total Recovered amount increase,
+   Recovery Rate %, and ROI breakdown.
+3. Show incoming Payment Confirmation Receipt sent via Email and WhatsApp.
+
+-------------------------------------------------------------------------------
+PART 4: SUBSCRIPTION MANDATE FAILURE (UPI AUTOPAY) (2:15 - 3:00)
+-------------------------------------------------------------------------------
+Goal: Show recurring subscription charge failure recovery.
+
+Run in Terminal 3:
+npx tsx scripts/test-webhook.ts --type subscription --error upi_mandate_failed --email kopykatqueryonline@gmail.com --phone +919790317406
+
+What to show on screen:
+1. New case appears with leak type "SUBSCRIPTION_FAILURE".
+2. Case drawer shows AI diagnosis ("upi_mandate_failed") and action
+   dispatching a 1-click recurring mandate update link.
+
+-------------------------------------------------------------------------------
+PART 5: CHECKOUT ABANDONMENT (CART DROP-OFF) (3:00 - 3:30)
+-------------------------------------------------------------------------------
+Goal: Show cart drop-off recovery scanner.
+
+Run in Terminal 3:
+npx tsx scripts/test-webhook.ts --type checkout --error cart_price_shock --email kopykatqueryonline@gmail.com --phone +919790317406
+
+What to show on screen:
+1. New case appears with leak type "CHECKOUT_ABANDONMENT".
+2. AI diagnoses cart price shock and generates customized checkout recovery link.
+
+-------------------------------------------------------------------------------
+PART 6: B2B RECEIVABLES & PROMISE-TO-PAY (PTP) (3:30 - 4:30)
+-------------------------------------------------------------------------------
+Goal: Show B2B overdue chasing, Promise-to-Pay pausing, and dispute escalation.
+
+Step A — Overdue Invoice:
+Run in Terminal 3:
+npx tsx scripts/test-webhook.ts --type invoice --error overdue_net30 --amount 15000 --email kopykatqueryonline@gmail.com --phone +919790317406
+
+Step B — Record Promise-to-Pay (PTP):
+Run in Terminal 3 (or use the PTP form in the case drawer):
+curl -X POST http://localhost:3000/api/cases/<INVOICE_CASE_ID>/promise-to-pay -H "Content-Type: application/json" -d "{\"promisedDate\": \"2026-09-15T10:00:00Z\", \"notes\": \"Client CFO confirmed wire transfer on Friday\"}"
+
+What to show on screen:
+- Drawer shows Promise-to-Pay date recorded. Outreach is frozen until promised date.
+
+Step C — Invoice Dispute Auto-Escalation:
+Run in Terminal 3:
+npx tsx scripts/test-webhook.ts --type invoice --error invoice_dispute --amount 25000 --email kopykatqueryonline@gmail.com
+
+What to show on screen:
+- Open http://localhost:3000/approvals: Show the case automatically routed to
+  Human Review queue (status "ESCALATED") because a dispute was detected,
+  preventing aggressive automated outreach.
+
+-------------------------------------------------------------------------------
+PART 7: AUDIT TRAIL & WRAP-UP (4:30 - 5:00)
+-------------------------------------------------------------------------------
+- Open any case drawer and scroll through the "Audit Trail" section:
+  Show that every single AI prompt, JSON response, guardrail check, and state
+  transition is recorded immutably with timestamps.
+- Show http://localhost:3000/policies to show configurable quiet hours and retry caps.
+- Conclude: "The agent doesn't just identify leaks; it recovers measured revenue
+  with complete auditability, guardrails, and compliance."
+
+===============================================================================
+END OF DEMO SCRIPT
+===============================================================================
