@@ -326,4 +326,4 @@ revenue-recovery/
 ---
 
 ## Authors & Submission Note
-Built for the **Razorpay Buildathon — Track 03: AI Revenue Recovery**.
+Built for the **Razorpay Buildathon by Sanjey Sivagurunathan — Track 03: AI Revenue Recovery**.
